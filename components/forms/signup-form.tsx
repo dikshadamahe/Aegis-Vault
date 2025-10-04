@@ -61,7 +61,7 @@ const SignUpForm = () => {
             <FormItem>
               <FormLabel>Username</FormLabel>
               <FormControl>
-                <Input placeholder="Enter your username" autoFocus {...field} />
+                <Input data-testid="signup-username" placeholder="Enter your username" autoFocus {...field} />
               </FormControl>
               <FormDescription>
                 Choose a unique username that others will see.
@@ -79,7 +79,7 @@ const SignUpForm = () => {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="Enter your email" {...field} />
+                <Input data-testid="signup-email" placeholder="Enter your email" {...field} />
               </FormControl>
               <FormDescription>
                 We&apos;ll never share your email with anyone else.
@@ -99,6 +99,7 @@ const SignUpForm = () => {
               <FormControl>
                 <div className="flex items-center space-x-1.5">
                   <Input
+                    data-testid="signup-password"
                     disabled={isPending}
                     type={seePassword ? "text" : "password"}
                     placeholder="Enter your password"
@@ -145,7 +146,7 @@ const SignUpForm = () => {
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={isPending}>
+        <Button data-testid="signup-submit" type="submit" className="w-full" disabled={isPending}>
           {isPending ? "Register..." : "Register"}
         </Button>
       </form>

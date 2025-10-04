@@ -8,26 +8,19 @@ const TEST_USER = {
 
 const PASSPHRASE = 'Correct Horse Battery Staple!';
 
-async function seedTestUser(baseURL: string) {
-  const ctx = await request.newContext({ baseURL });
-  await ctx.post('/api/test/register', { data: TEST_USER }).catch(() => null);
-  await ctx.dispose();
-}
-
 test.describe('Vault E2E', () => {
   test.beforeEach(async ({ baseURL, request }: { baseURL: string | undefined; request: APIRequestContext }) => {
     if (!baseURL) throw new Error('No baseURL');
-    // seed user, categories, and clear items for isolation
-    await request.post('/api/test/register', { data: TEST_USER });
-    await request.post('/api/test/seed-categories', { data: { email: TEST_USER.email, categories: [{ name: 'Web Logins', slug: 'web-logins' }] } });
-    await request.post('/api/test/clear-items', { data: { email: TEST_USER.email } });
+    // Seed all: user + categories + clear items for isolation
+    await request.post('/api/test/seed-all', { data: { email: TEST_USER.email, username: TEST_USER.username, password: TEST_USER.password, categories: [{ name: 'Web Logins', slug: 'web-logins' }] } });
+  });
+
+  test.afterAll(async ({ request }: { request: APIRequestContext }) => {
+    await request.post('/api/test/teardown', { data: { email: TEST_USER.email } });
   });
 
   test('create, edit, delete, search, filter, decrypt, and clipboard', async ({ page, baseURL }: { page: Page; baseURL: string | undefined }) => {
     if (!baseURL) throw new Error('No baseURL');
-
-    // Seed user via test endpoint to bypass UI registration
-    await seedTestUser(baseURL);
 
     // 1) Sign in via UI
   await page.goto(baseURL + '/sign-in');
@@ -37,19 +30,7 @@ test.describe('Vault E2E', () => {
 
     await expect(page).toHaveURL(/dashboard/);
 
-  // category already seeded via test endpoint in beforeEach
-
-    // Ensure at least one category exists if UI requires it; open Add new password and check category select
-    await page.getByRole('button', { name: /add new password/i }).click();
-    // If categories list empty, create a category via API
-    const hasOptions = await page.getByRole('option').count().then(c => c > 0).catch(() => false);
-    if (!hasOptions) {
-      const api = await request.newContext({ baseURL });
-      await api.post('/api/vault/categories', { data: { name: 'Web Logins', slug: 'web-logins' } });
-      await api.dispose();
-    }
-    // close dialog for now
-    await page.keyboard.press('Escape');
+    // category already seeded via seed-all in beforeEach
 
     // Intercept vault API requests/responses to ensure no plaintext and ciphertext-only on writes
   await page.route('**/api/vault/**', async (route: Route) => {

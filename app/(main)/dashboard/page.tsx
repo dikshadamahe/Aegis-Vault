@@ -5,6 +5,7 @@ import SearchPassword from "@/components/search-password";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { VaultItem, CategoryLite } from "@/types/vault";
+import VaultStats from "../../../components/vault-stats";
 
 interface DashboarPageProps {
   searchParams: {
@@ -21,9 +22,10 @@ const DashboardPage = async ({
   if (category) qs.set("category", String(category));
   if (search) qs.set("search", String(search));
 
-  const [itemsRes, catsRes] = await Promise.all([
+  const [itemsRes, catsRes, statsRes] = await Promise.all([
     fetch(`/api/vault/items${qs.toString() ? `?${qs}` : ""}`, { cache: "no-store" }),
     fetch(`/api/vault/categories`, { cache: "no-store" }),
+    fetch(`/api/vault/items/stats`, { cache: "no-store" }),
   ]);
 
   if (!itemsRes.ok) {
@@ -32,11 +34,14 @@ const DashboardPage = async ({
   if (!catsRes.ok) {
     throw new Error(`Failed to load categories (${catsRes.status})`);
   }
+  if (!statsRes.ok) {
+    throw new Error(`Failed to load stats (${statsRes.status})`);
+  }
 
   const { items } = (await itemsRes.json()) as { items: VaultItem[] };
   const { categories } = (await catsRes.json()) as { categories: CategoryLite[] };
   const passwordsCollection = items;
-  const total = items.length;
+  const { total } = (await statsRes.json()) as { total: number };
 
   return (
     <>
@@ -49,6 +54,7 @@ const DashboardPage = async ({
       <div className="mb-6 flex items-center space-x-3">
         <SearchPassword total={total} />
         <AddNewPasswordDialog categories={categories} />
+        <VaultStats initialTotal={total} />
       </div>
 
       <div className="space-y-2.5">

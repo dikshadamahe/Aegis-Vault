@@ -46,9 +46,9 @@ function toBase64(u8: Uint8Array): string {
   for (let i = 0; i < len; i++) binary += String.fromCharCode(u8[i]);
   // btoa is available in browsers; fallback for Node using Buffer if present
   if (typeof btoa === "function") return btoa(binary);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const B: any = (globalThis as any).Buffer;
-  return B.from(u8).toString("base64");
+  const maybeBuffer = (globalThis as unknown as { Buffer?: { from: (i: Uint8Array | string, e?: string) => { toString: (e: string) => string } } }).Buffer;
+  if (maybeBuffer) return maybeBuffer.from(u8).toString("base64");
+  throw new Error("Base64 encoding not supported in this environment");
 }
 
 function fromBase64(b64: string): Uint8Array {
@@ -58,9 +58,9 @@ function fromBase64(b64: string): Uint8Array {
     for (let i = 0; i < binary.length; i++) u8[i] = binary.charCodeAt(i);
     return u8;
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const B: any = (globalThis as any).Buffer;
-  return new Uint8Array(B.from(b64, "base64"));
+  const maybeBuffer = (globalThis as unknown as { Buffer?: { from: (i: string, e: string) => Uint8Array } }).Buffer;
+  if (maybeBuffer) return new Uint8Array(maybeBuffer.from(b64, "base64"));
+  throw new Error("Base64 decoding not supported in this environment");
 }
 
 export async function encryptSecret(plaintext: string, key: Uint8Array): Promise<CipherPayload> {

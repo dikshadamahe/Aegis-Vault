@@ -9,7 +9,7 @@ generator client {
 // Switch to MongoDB provider as requested
 datasource db {
   provider = "mongodb"
-  url      = env("DATABASE_URL")
+  url      = env("MONGODB_URI")
 }
 
 // NextAuth + Application models adapted for MongoDB
@@ -50,12 +50,14 @@ model User {
   encryptionPublicKey String? // reserved for future sharing features
   accounts           Account[]
   sessions           Session[]
+  categories         Category[]
   passwords          Password[]
 
   @@index([name, email])
 }
 
 model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
   identifier String
   token      String   @unique
   expires    DateTime

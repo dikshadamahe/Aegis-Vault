@@ -39,6 +39,7 @@ const CopyToClipboard = ({ className, text }: CopyToClipboardProps) => {
       variant="outline"
       size="icon"
       onClick={handleCopyClicked}
+      aria-label={hasCopiedText ? "Copied" : "Copy"}
       disabled={!text}
     >
       {hasCopiedText ? (

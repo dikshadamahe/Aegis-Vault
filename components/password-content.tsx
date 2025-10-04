@@ -61,6 +61,7 @@ const PasswordContent = ({ password }: PasswordContentProps) => {
           size="sm"
           className="ml-0.5"
           onClick={handleToggle}
+          aria-label={passwordMask ? "Reveal Password" : "Hide Password"}
         >
           {passwordMask ? (
             <EyeIcon className="h-4 w-4" />

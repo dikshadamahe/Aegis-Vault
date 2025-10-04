@@ -60,22 +60,20 @@ const AddNewPasswoForm = ({
     },
   });
 
-  const { key, salt, setPassphrase } = usePassphrase();
+  const { getKeyForSalt, openPassphrase, genSalt } = usePassphrase();
   const [notes, setNotes] = useState("");
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: async (values: TPasswordSchema) => {
       // ensure we have a derived key; ask user for passphrase if not set
-      let k = key, s = salt;
-      if (!k || !s) {
-        const pass = window.prompt("Enter your vault passphrase to encrypt secrets:") || "";
-        const derived = await deriveKeyFromPassphrase(pass);
-        await setPassphrase(pass);
-        k = derived.key; s = derived.salt;
-      }
-
-      const encPwd = await encryptSecret(values.password, k!);
-      const encNotes = notes ? await encryptSecret(notes, k!) : undefined;
+      // ask for passphrase if needed
+      await openPassphrase({ reason: "Enter passphrase to encrypt secrets" });
+  // generate a fresh salt for this record
+  const s = genSalt();
+  // derive key using the passphrase and new salt
+  const kReal = await getKeyForSalt(s);
+      const encPwd = await encryptSecret(values.password, kReal);
+      const encNotes = notes ? await encryptSecret(notes, kReal) : undefined;
 
       const toB64 = (u8: Uint8Array) => {
         if (typeof Buffer !== "undefined") return Buffer.from(u8).toString("base64");
@@ -92,7 +90,7 @@ const AddNewPasswoForm = ({
         category: values.category,
         passwordCiphertext: encPwd.ciphertext,
         passwordNonce: encPwd.nonce,
-        passwordSalt: (s ? toB64(s) : ""),
+  passwordSalt: toB64(s),
         notesCiphertext: encNotes?.ciphertext,
         notesNonce: encNotes?.nonce,
       };

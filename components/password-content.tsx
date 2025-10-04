@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useReducer, useState } from "react";
 import { maskPassword } from "@/lib/mask-password";
-import { decryptSecret, deriveKeyFromPassphrase } from "@/lib/crypto";
+import { decryptSecret } from "@/lib/crypto";
 import { usePassphrase } from "@/providers/passphrase-provider";
 
 interface PasswordContentProps {
@@ -22,26 +22,18 @@ const PasswordContent = ({ password }: PasswordContentProps) => {
     (state) => !state,
     true,
   );
-  const { setPassphrase } = usePassphrase();
+  const { openPassphrase, getKeyForSalt } = usePassphrase();
   const [decrypted, setDecrypted] = useState<string>("");
   const [notesOpen, toggleNotesOpen] = useReducer((s) => !s, false);
   const [notesDecrypted, setNotesDecrypted] = useState<string>("");
 
-  const b64ToU8 = (b64: string) => {
-    const bin = atob(b64);
-    const u8 = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    return u8;
-  };
 
   const handleToggle = async () => {
     if (passwordMask) {
       // about to reveal -> decrypt first time
-      const pass = window.prompt("Enter your vault passphrase to decrypt:") || "";
-      await setPassphrase(pass);
+      await openPassphrase({ reason: "Enter passphrase to decrypt" });
       if (password.passwordCiphertext && password.passwordNonce && password.passwordSalt) {
-        const saltU8 = b64ToU8(password.passwordSalt);
-        const { key } = await deriveKeyFromPassphrase(pass, saltU8);
+        const key = await getKeyForSalt(password.passwordSalt);
         const plain = await decryptSecret(
           { ciphertext: password.passwordCiphertext, nonce: password.passwordNonce },
           key
@@ -106,11 +98,9 @@ const PasswordContent = ({ password }: PasswordContentProps) => {
             className="ml-0.5"
             onClick={async () => {
               if (!notesOpen) {
-                const pass = window.prompt("Enter your vault passphrase to decrypt notes:") || "";
-                await setPassphrase(pass);
+                await openPassphrase({ reason: "Enter passphrase to decrypt notes" });
                 if (password.notesCiphertext && password.notesNonce && password.passwordSalt) {
-                  const saltU8 = b64ToU8(password.passwordSalt);
-                  const { key } = await deriveKeyFromPassphrase(pass, saltU8);
+                  const key = await getKeyForSalt(password.passwordSalt);
                   const plain = await decryptSecret(
                     { ciphertext: password.notesCiphertext, nonce: password.notesNonce },
                     key

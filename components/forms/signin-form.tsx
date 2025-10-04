@@ -63,6 +63,7 @@ const SignInForm = () => {
               <FormLabel>Email or Username</FormLabel>
               <FormControl>
                 <Input
+                  data-testid="signin-email-or-username"
                   placeholder="Enter your email/username"
                   disabled={isPending}
                   autoFocus
@@ -83,6 +84,7 @@ const SignInForm = () => {
               <FormControl>
                 <div className="flex items-center space-x-1.5">
                   <Input
+                    data-testid="signin-password"
                     disabled={isPending}
                     type={seePassword ? "text" : "password"}
                     placeholder="Enter your password"
@@ -107,7 +109,7 @@ const SignInForm = () => {
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={isPending}>
+        <Button data-testid="signin-submit" type="submit" className="w-full" disabled={isPending}>
           {isPending ? "Log In..." : "Log In"}
         </Button>
       </form>

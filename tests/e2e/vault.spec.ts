@@ -1,4 +1,4 @@
-import { test, expect, request } from '@playwright/test';
+import { test, expect, request, Page, APIRequestContext, Route } from '@playwright/test';
 
 const TEST_USER = {
   email: 'e2e@example.com',
@@ -8,48 +8,36 @@ const TEST_USER = {
 
 const PASSPHRASE = 'Correct Horse Battery Staple!';
 
-async function registerIfNeeded(baseURL: string) {
+async function seedTestUser(baseURL: string) {
   const ctx = await request.newContext({ baseURL });
-  const res = await ctx.post('/api/auth/callback/credentials?json=true', {
-    data: { emailOrUsername: TEST_USER.email, password: TEST_USER.password },
-  });
-  if (res.ok()) {
-    await ctx.dispose();
-    return; // user exists and login works
-  }
-  // register via server action endpoint fallback (form route)
-  const signup = await ctx.post('/api/auth/register', {
-    data: TEST_USER,
-  }).catch(() => null);
+  await ctx.post('/api/test/register', { data: TEST_USER }).catch(() => null);
   await ctx.dispose();
 }
 
 test.describe('Vault E2E', () => {
-  test('create, edit, delete, search, filter, decrypt, and clipboard', async ({ page, baseURL }) => {
+  test.beforeEach(async ({ baseURL, request }: { baseURL: string | undefined; request: APIRequestContext }) => {
+    if (!baseURL) throw new Error('No baseURL');
+    // seed user, categories, and clear items for isolation
+    await request.post('/api/test/register', { data: TEST_USER });
+    await request.post('/api/test/seed-categories', { data: { email: TEST_USER.email, categories: [{ name: 'Web Logins', slug: 'web-logins' }] } });
+    await request.post('/api/test/clear-items', { data: { email: TEST_USER.email } });
+  });
+
+  test('create, edit, delete, search, filter, decrypt, and clipboard', async ({ page, baseURL }: { page: Page; baseURL: string | undefined }) => {
     if (!baseURL) throw new Error('No baseURL');
 
-    // 1) Sign in (or register then sign in). We will attempt UI login.
-    await page.goto(baseURL + '/sign-in');
-    await page.getByPlaceholder('Enter Email or Username').fill(TEST_USER.email);
-    await page.getByPlaceholder('Enter Password').fill(TEST_USER.password);
-    await page.getByRole('button', { name: /login/i }).click();
+    // Seed user via test endpoint to bypass UI registration
+    await seedTestUser(baseURL);
 
-    // if login fails, try register then login again
-    if (!(await page.waitForURL(/dashboard/, { timeout: 5000 }).then(() => true).catch(() => false))) {
-      // try simple register page
-      await page.goto(baseURL + '/sign-up');
-      await page.getByPlaceholder('Enter your username').fill(TEST_USER.username);
-      await page.getByPlaceholder('Enter your email').fill(TEST_USER.email);
-      await page.getByPlaceholder('Enter your password').fill(TEST_USER.password);
-      await page.getByRole('checkbox', { name: /accept terms/i }).click();
-      await page.getByRole('button', { name: /register/i }).click();
-      await page.waitForURL(/sign-in/);
-      await page.getByPlaceholder('Enter Email or Username').fill(TEST_USER.email);
-      await page.getByPlaceholder('Enter Password').fill(TEST_USER.password);
-      await page.getByRole('button', { name: /login/i }).click();
-    }
+    // 1) Sign in via UI
+  await page.goto(baseURL + '/sign-in');
+  await page.getByTestId('signin-email-or-username').fill(TEST_USER.email);
+  await page.getByTestId('signin-password').fill(TEST_USER.password);
+  await page.getByTestId('signin-submit').click();
 
     await expect(page).toHaveURL(/dashboard/);
+
+  // category already seeded via test endpoint in beforeEach
 
     // Ensure at least one category exists if UI requires it; open Add new password and check category select
     await page.getByRole('button', { name: /add new password/i }).click();
@@ -63,31 +51,55 @@ test.describe('Vault E2E', () => {
     // close dialog for now
     await page.keyboard.press('Escape');
 
-    // Intercept vault API responses to ensure no plaintext
-    await page.route('**/api/vault/**', async (route) => {
+    // Intercept vault API requests/responses to ensure no plaintext and ciphertext-only on writes
+  await page.route('**/api/vault/**', async (route: Route) => {
+      const req = route.request();
+      const method = req.method();
+      if (method === 'POST' || method === 'PATCH') {
+        const body = req.postDataJSON?.() as any;
+        if (body) {
+          // ensure we do not send plaintext password or notes
+          expect(body.password).toBeFalsy();
+          expect(body.notes).toBeFalsy();
+          // ensure ciphertext fields exist on write
+          expect(typeof body.passwordCiphertext).toBe('string');
+          expect(typeof body.passwordNonce).toBe('string');
+          expect(typeof body.passwordSalt).toBe('string');
+        }
+      }
       const res = await route.fetch();
       const cloned = res.clone();
       const contentType = res.headers().get('content-type') || '';
       if (contentType.includes('application/json')) {
         const json = await cloned.json().catch(() => null);
         if (json) {
-          const jsonStr = JSON.stringify(json).toLowerCase();
-          expect(jsonStr.includes('"password"')).toBeFalsy(); // no plaintext password key in payloads
+          const hasPlainKeys = (obj: any): boolean => {
+            if (obj && typeof obj === 'object') {
+              for (const key of Object.keys(obj)) {
+                const lower = key.toLowerCase();
+                if (lower === 'password' || lower === 'notes') return true;
+                const val = (obj as any)[key];
+                if (val && typeof val === 'object' && hasPlainKeys(val)) return true;
+              }
+            }
+            return false;
+          };
+          expect(hasPlainKeys(json)).toBeFalsy();
         }
       }
       await route.fulfill({ response: res });
     });
 
     // 2) Create a new password item
-    await page.getByRole('button', { name: /add new password/i }).click();
-    await page.getByRole('combobox').click();
+  await page.getByRole('button', { name: /add new password/i }).click();
+  await page.getByTestId('category-select').click();
     await page.getByRole('option', { name: /web logins/i }).click();
-    await page.getByLabel(/website name/i).fill('Example');
-    await page.getByLabel(/email/i).fill('user@example.com');
-    await page.getByLabel(/^username/i).fill('demo-user');
-    await page.getByLabel(/^password$/i).fill('Secret#12345');
-    await page.getByLabel(/^url/i).fill('https://example.com');
-    await page.getByLabel(/^notes/i).fill('my secure note');
+  await page.getByTestId('website-input').fill('Example');
+  await page.getByTestId('email-input').fill('user@example.com');
+  await page.getByLabel(/^username/i).fill('demo-user');
+  await page.getByTestId('password-input').fill('Secret#12345');
+  await page.getByTestId('url-input').fill('https://example.com');
+  await page.getByTestId('notes-input').fill('my secure note');
     await page.getByRole('button', { name: /^create$/i }).click();
 
     // passphrase modal appears; enter passphrase

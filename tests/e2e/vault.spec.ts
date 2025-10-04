@@ -53,11 +53,14 @@ test.describe('Vault E2E', () => {
           expect(typeof body.passwordSalt).toBe('string');
         }
       }
-      const res = await route.fetch();
-      const cloned = res.clone();
-      const contentType = res.headers().get('content-type') || '';
+  const res = await route.fetch();
+  const headers = res.headers();
+  const contentType = headers['content-type'] || '';
+      let bodyBuf: Buffer | undefined;
       if (contentType.includes('application/json')) {
-        const json = await cloned.json().catch(() => null);
+        const text = await res.text();
+        bodyBuf = Buffer.from(text);
+        const json = JSON.parse(text);
         if (json) {
           const hasPlainKeys = (obj: any): boolean => {
             if (obj && typeof obj === 'object') {
@@ -73,7 +76,11 @@ test.describe('Vault E2E', () => {
           expect(hasPlainKeys(json)).toBeFalsy();
         }
       }
-      await route.fulfill({ response: res });
+      await route.fulfill({
+        status: res.status(),
+        headers,
+        body: bodyBuf ?? (await res.body()),
+      });
     });
 
     // 2) Create a new password item

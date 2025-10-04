@@ -16,6 +16,11 @@ const config: PlaywrightTestConfig = {
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      ENABLE_TEST_ENDPOINTS: 'true',
+      ENABLE_EMBEDDED_MONGO: process.env.ENABLE_EMBEDDED_MONGO || 'true',
+      // If external Atlas is configured, tests will still use it unless embedded is enabled
+    },
   },
 };
 

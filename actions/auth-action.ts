@@ -3,6 +3,8 @@
 import { TRegister, registerSchema } from "@/lib/validators/auth-schema";
 import prisma from "@/prisma/db";
 import { Prisma } from "@prisma/client";
+// For Prisma v5, KnownRequestError is in runtime/library (namespace type guard still works via Prisma alias)
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import bcrypt from "bcrypt";
 
 export const registerAction = async (values: TRegister) => {
@@ -25,7 +27,7 @@ export const registerAction = async (values: TRegister) => {
       message: "Create new user successfully",
     };
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
         throw new Error(
           `The ${(

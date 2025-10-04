@@ -41,7 +41,11 @@ const SignInForm = () => {
 
           if (callback?.ok && !callback.error) {
             toast.success("Logged in");
-            router.push("/dashboard");
+            // Preserve pageSize if present in URL (used by E2E to test pagination deterministically)
+            const params = new URLSearchParams(window.location.search);
+            const pageSize = params.get("pageSize");
+            const target = pageSize ? `/dashboard?pageSize=${encodeURIComponent(pageSize)}` : "/dashboard";
+            router.push(target);
           }
         },
       );

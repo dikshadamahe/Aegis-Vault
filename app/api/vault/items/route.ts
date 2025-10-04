@@ -30,7 +30,11 @@ export async function GET(req: Request) {
   const items = await prisma.password.findMany({
     where,
     include: { category: true },
-    orderBy: { updatedAt: "desc" },
+    orderBy: [
+      { updatedAt: "desc" },
+      { createdAt: "desc" },
+      { id: "desc" },
+    ],
     skip: (page - 1) * pageSize,
     take: pageSize,
   });

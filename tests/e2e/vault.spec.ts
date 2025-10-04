@@ -177,17 +177,20 @@ test.describe('Vault E2E', () => {
     await page.getByTestId('signin-submit').click();
     await expect(page).toHaveURL(/dashboard/);
 
-  // Page 1 should show first 2 updated-at desc (seed insertion order varies; assert at least 2 visible)
-  const rowsPage1 = await page.getByRole('button', { name: /add new password/i }).locator('..').locator('..');
-  // Simple assertions: expect two known names to be visible among seeded items
-  await expect(page.getByText(/alpha|beta|gamma|delta|epsilon/i)).toBeVisible();
+  // Page 1 should show exactly 2 rows
+  await expect(page.getByTestId('vault-items-list').getByTestId('vault-item-row')).toHaveCount(2);
 
   // Navigate Next and assert we can paginate
   await page.getByRole('button', { name: /^next$/i }).click();
-  await expect(page.getByText(/alpha|beta|gamma|delta|epsilon/i)).toBeVisible();
+  await expect(page.getByTestId('vault-items-list').getByTestId('vault-item-row')).toHaveCount(2);
   // And back
   await page.getByRole('button', { name: /^prev$/i }).click();
-  await expect(page.getByText(/alpha|beta|gamma|delta|epsilon/i)).toBeVisible();
+  await expect(page.getByTestId('vault-items-list').getByTestId('vault-item-row')).toHaveCount(2);
+
+  // Go to the last page and assert remainder count (5 items, pageSize=2 => last page has 1)
+  await page.getByRole('button', { name: /^next$/i }).click(); // to page 2
+  await page.getByRole('button', { name: /^next$/i }).click(); // to page 3 (last)
+  await expect(page.getByTestId('vault-items-list').getByTestId('vault-item-row')).toHaveCount(1);
 
     // Filter using search
     const search = page.getByRole('searchbox', { name: /search/i });

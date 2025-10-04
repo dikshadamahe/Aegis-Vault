@@ -12,16 +12,20 @@ interface DashboarPageProps {
   searchParams: {
     category?: string;
     search?: string;
+    page?: string;
+    pageSize?: string;
   };
 }
 
 const DashboardPage = async ({
-  searchParams: { category, search },
+  searchParams: { category, search, page: pageParam, pageSize: pageSizeParam },
 }: DashboarPageProps) => {
   // Build query string for REST API
   const qs = new URLSearchParams();
   if (category) qs.set("category", String(category));
   if (search) qs.set("search", String(search));
+  if (pageParam) qs.set("page", String(pageParam));
+  if (pageSizeParam) qs.set("pageSize", String(pageSizeParam));
 
   const querySuffix = qs.toString() ? `?${qs}` : "";
   const [itemsRes, catsRes, statsRes] = await Promise.all([
@@ -40,7 +44,7 @@ const DashboardPage = async ({
     throw new Error(`Failed to load stats (${statsRes.status})`);
   }
 
-  const { items, hasPrev, hasNext, page, pageSize, total } = (await itemsRes.json()) as { items: VaultItem[]; hasPrev: boolean; hasNext: boolean; page: number; pageSize: number; total: number };
+  const { items, hasPrev, hasNext, page: currentPage, pageSize: currentPageSize, total } = (await itemsRes.json()) as { items: VaultItem[]; hasPrev: boolean; hasNext: boolean; page: number; pageSize: number; total: number };
   const { categories } = (await catsRes.json()) as { categories: CategoryLite[] };
   const passwordsCollection = items;
   const stats = (await statsRes.json()) as { total: number };
@@ -59,7 +63,7 @@ const DashboardPage = async ({
         <VaultStats initialTotal={stats.total} />
       </div>
 
-      <div className="space-y-2.5">
+  <div className="space-y-2.5" data-testid="vault-items-list">
         {!passwordsCollection.length ? (
           <Alert variant="destructive">
             <Terminal className="h-4 w-4" />

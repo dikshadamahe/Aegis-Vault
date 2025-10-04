@@ -22,7 +22,7 @@ const PasswordCollectionCard = ({
 }: PasswordCollectionCardProps) => {
 
   return (
-    <Card>
+    <Card data-testid="vault-item-row">
       <CardContent className="p-0 px-5">
         <Accordion type="single" collapsible>
           <AccordionItem value="item-1" className="border-none">

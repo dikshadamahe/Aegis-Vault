@@ -1,28 +1,30 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
+// Prisma Client generator
 generator client {
   provider = "prisma-client-js"
 }
 
+// Switch to MongoDB provider as requested
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
+// NextAuth + Application models adapted for MongoDB
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
+  id                String @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String @db.ObjectId
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -31,23 +33,24 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
   sessionToken String   @unique
-  userId       String
+  userId       String   @db.ObjectId
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model User {
-  id             String     @id @default(cuid())
-  name           String?    @unique
-  email          String?    @unique
-  emailVerified  DateTime?
-  hashedPassword String?
-  image          String?
-  accounts       Account[]
-  sessions       Session[]
-  passwords      Password[]
+  id                 String     @id @default(auto()) @map("_id") @db.ObjectId
+  name               String?    @unique
+  email              String?    @unique
+  emailVerified      DateTime?
+  hashedPassword     String?
+  image              String?
+  encryptionPublicKey String? // reserved for future sharing features
+  accounts           Account[]
+  sessions           Session[]
+  passwords          Password[]
 
   @@index([name, email])
 }
@@ -61,31 +64,42 @@ model VerificationToken {
 }
 
 model Category {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
   name      String
   slug      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   passwords Password[]
 
   @@index([name, slug])
 }
 
 model Password {
-  id          String   @id @default(cuid())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  categoryId  String   @db.ObjectId
+  // legacy display fields
   websiteName String
   email       String?
   username    String?
-  password    String
   url         String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  // legacy plaintext-encrypted field (will be deprecated in favor of ciphertext fields)
+  password    String
+  // client-side encryption fields (ciphertext only)
+  passwordCiphertext String?
+  passwordNonce      String?
+  passwordSalt       String?
+  notesCiphertext    String?
+  notesNonce         String?
+  lastUsedAt         DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  category   Category @relation(fields: [categoryId], references: [id])
-  categoryId String
-  user       User     @relation(fields: [userId], references: [id])
-  userId     String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
 
   @@index([websiteName])
 }

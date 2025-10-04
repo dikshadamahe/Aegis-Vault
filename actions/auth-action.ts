@@ -38,3 +38,8 @@ export const registerAction = async (values: TRegister) => {
     throw new Error("Something broke. Failed to register user");
   }
 };
+
+      // Placeholder auth actions; implementation is handled by NextAuth and server routes
+      export async function signOutAction() {}
+      export async function signUpAction() {}
+      export async function signInAction() {}

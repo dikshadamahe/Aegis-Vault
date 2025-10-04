@@ -15,3 +15,9 @@ export const encryptedVaultItemSchema = z.object({
 });
 
 export type TEncryptedVaultItem = z.infer<typeof encryptedVaultItemSchema>;
+
+export function assertNoPlaintext(input: unknown): boolean {
+  if (!input || typeof input !== "object") return true;
+  const anyInput = input as Record<string, unknown>;
+  return !("password" in anyInput || "notes" in anyInput);
+}

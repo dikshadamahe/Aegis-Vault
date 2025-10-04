@@ -8,10 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
+    "test": "vitest run"
   },
   "dependencies": {
-    "libsodium-wrappers": "^0.7.13",
     "@auth/prisma-adapter": "^1.1.0",
     "@hookform/resolvers": "^3.3.4",
     "@prisma/client": "^5.8.1",
@@ -43,6 +43,7 @@
     "framer-motion": "^11.0.3",
     "geist": "^1.2.1",
     "generate-password": "^1.7.1",
+    "libsodium-wrappers": "^0.7.13",
     "lottie-react": "^2.4.0",
     "lucide-react": "^0.316.0",
     "next": "14.1.0",
@@ -69,12 +70,15 @@
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "14.1.0",
+    "jsdom": "^27.0.0",
     "postcss": "^8",
     "prettier": "^3.2.4",
     "prettier-plugin-tailwindcss": "^0.5.11",
     "prisma": "^5.8.1",
     "tailwindcss": "^3.3.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.0.2"
+    "typescript": "^5.0.2",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^2.1.9"
   }
 }

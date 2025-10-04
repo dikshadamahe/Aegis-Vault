@@ -13,8 +13,12 @@ let ready: Promise<void> | null = null;
 export const initCrypto = () => {
   if (!ready)
     ready = (async () => {
-      if (!sodium) sodium = await import("libsodium-wrappers");
-      await sodium.ready;
+      if (!sodium) {
+        const mod = await import("libsodium-wrappers");
+        // use default when available (recommended), fallback to module
+        sodium = (mod as any).default ?? mod;
+      }
+      await (sodium.ready as Promise<void>);
     })();
   return ready as Promise<void>;
 };
@@ -36,15 +40,32 @@ export const cryptr = {
 export async function deriveKeyFromPassphrase(passphrase: string, salt?: Uint8Array) {
   await initCrypto();
   const s = salt ?? sodium.randombytes_buf(16);
-  const key = sodium.crypto_pwhash(
-    32,
-    passphrase,
-    s,
-    sodium.crypto_pwhash_OPSLIMIT_MODERATE,
-    sodium.crypto_pwhash_MEMLIMIT_MODERATE,
-    sodium.crypto_pwhash_ALG_ARGON2ID13
+  if (typeof sodium.crypto_pwhash === "function") {
+    const key = sodium.crypto_pwhash(
+      32,
+      passphrase,
+      s,
+      sodium.crypto_pwhash_OPSLIMIT_MODERATE,
+      sodium.crypto_pwhash_MEMLIMIT_MODERATE,
+      sodium.crypto_pwhash_ALG_ARGON2ID13
+    );
+    return { key, salt: s };
+  }
+  // Fallback for non-browser/test environments: PBKDF2-SHA256
+  const te = new TextEncoder();
+  const baseKey = await (globalThis.crypto as Crypto).subtle.importKey(
+    "raw",
+    te.encode(passphrase),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits"]
   );
-  return { key, salt: s };
+  const bits = await (globalThis.crypto as Crypto).subtle.deriveBits(
+    { name: "PBKDF2", salt: s, iterations: 100_000, hash: "SHA-256" },
+    baseKey,
+    256
+  );
+  return { key: new Uint8Array(bits), salt: s };
 }
 
 // cross-environment base64 helpers

@@ -12,10 +12,10 @@ import {
 import { Button } from "./ui/button";
 import { LucidePlus } from "lucide-react";
 import AddNewPasswoForm from "./forms/add-new-password-form";
-import { Category } from "@prisma/client";
+import { CategoryLite } from "@/types/vault";
 
 interface AddNewPasswordDialogProps {
-  categories: Category[];
+  categories: CategoryLite[];
 }
 
 const AddNewPasswordDialog = ({ categories }: AddNewPasswordDialogProps) => {

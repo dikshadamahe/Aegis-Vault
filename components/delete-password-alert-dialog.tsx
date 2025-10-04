@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useReducer, useState } from "react";
+import React, { useReducer } from "react";
 import { Button } from "./ui/button";
 import { LucideTrash2 } from "lucide-react";
 import {
@@ -15,8 +15,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useMutation } from "@tanstack/react-query";
-import { deletePassword } from "@/actions/password-action";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface DeletePasswordAlertDialogProps {
   passwordId: string;
@@ -26,19 +26,27 @@ const DeletePasswordAlertDialog = ({
   passwordId,
 }: DeletePasswordAlertDialogProps) => {
   const [isOpen, toggleIsOpen] = useReducer((state) => !state, false);
+  const router = useRouter();
 
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: async (id: string) =>
-      await deletePassword(id)
-        .then((callback) => {
-          toast.success(callback.message);
-        })
-        .catch((error) => {
-          toast.error(error.message);
-        })
-        .finally(() => {
-          toggleIsOpen();
-        }),
+    mutationFn: async (id: string) => {
+      try {
+        const res = await fetch(`/api/vault/items/${id}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          const msg = data?.error || `Delete failed (${res.status})`;
+          throw new Error(msg);
+        }
+        toast.success("Password deleted successfully");
+        router.refresh();
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to delete password");
+      } finally {
+        toggleIsOpen();
+      }
+    },
   });
 
   return (

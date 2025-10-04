@@ -5,7 +5,7 @@ import {
   passwordSchema,
 } from "@/lib/validators/password-schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Category } from "@prisma/client";
+import { CategoryLite } from "@/types/vault";
 import { useForm } from "react-hook-form";
 import { Button } from "../ui/button";
 import {
@@ -26,17 +26,17 @@ import {
   SelectValue,
 } from "../ui/select";
 import { useMutation } from "@tanstack/react-query";
-import { addNewPassword } from "@/actions/password-action";
 import { toast } from "sonner";
 import CategoryIcon from "../category-icon";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { DispatchWithoutAction, useReducer, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
-import { encryptSecret, deriveKeyFromPassphrase } from "@/lib/crypto";
+import { encryptSecret } from "@/lib/crypto";
 import { usePassphrase } from "@/providers/passphrase-provider";
+import { useRouter } from "next/navigation";
 
 interface AddNewPasswoFormProps {
-  categories: Category[];
+  categories: CategoryLite[];
   toggleIsOpen: React.DispatchWithoutAction;
 }
 
@@ -45,6 +45,7 @@ const AddNewPasswoForm = ({
   toggleIsOpen,
 }: AddNewPasswoFormProps) => {
   const [seePassword, toggleSeePassword] = useReducer((state) => !state, false);
+  const router = useRouter();
 
   const form = useForm<TPasswordSchema>({
     resolver: zodResolver(passwordSchema),
@@ -95,15 +96,24 @@ const AddNewPasswoForm = ({
         notesNonce: encNotes?.nonce,
       };
 
-      return await addNewPassword(payload as any)
-        .then((callback) => {
-          toast.success(callback.message);
-          form.reset();
-          toggleIsOpen();
-        })
-        .catch((error) => {
-          toast.error(error.message);
+      try {
+        const res = await fetch("/api/vault/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          const msg = data?.error || `Create failed (${res.status})`;
+          throw new Error(msg);
+        }
+        toast.success("Created new password successfully");
+        form.reset();
+        toggleIsOpen();
+        router.refresh();
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to create password");
+      }
     },
   });
 

@@ -1,14 +1,10 @@
-import { getCategories } from "@/actions/category-action";
-import {
-  getPasswordCollection,
-  totalUserPasswordSaved,
-} from "@/actions/password-action";
 import AddNewPasswordDialog from "@/components/add-new-password-dialog";
 import Header from "@/components/header";
 import PasswordCollectionCard from "@/components/password-collection-card";
 import SearchPassword from "@/components/search-password";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
+import { VaultItem, CategoryLite } from "@/types/vault";
 
 interface DashboarPageProps {
   searchParams: {
@@ -20,14 +16,27 @@ interface DashboarPageProps {
 const DashboardPage = async ({
   searchParams: { category, search },
 }: DashboarPageProps) => {
-  const [passwordsCollection, categories, total] = await Promise.all([
-    getPasswordCollection({
-      category: category as string,
-      search: search as string,
-    }),
-    getCategories(),
-    totalUserPasswordSaved(),
+  // Build query string for REST API
+  const qs = new URLSearchParams();
+  if (category) qs.set("category", String(category));
+  if (search) qs.set("search", String(search));
+
+  const [itemsRes, catsRes] = await Promise.all([
+    fetch(`/api/vault/items${qs.toString() ? `?${qs}` : ""}`, { cache: "no-store" }),
+    fetch(`/api/vault/categories`, { cache: "no-store" }),
   ]);
+
+  if (!itemsRes.ok) {
+    throw new Error(`Failed to load items (${itemsRes.status})`);
+  }
+  if (!catsRes.ok) {
+    throw new Error(`Failed to load categories (${catsRes.status})`);
+  }
+
+  const { items } = (await itemsRes.json()) as { items: VaultItem[] };
+  const { categories } = (await catsRes.json()) as { categories: CategoryLite[] };
+  const passwordsCollection = items;
+  const total = items.length;
 
   return (
     <>
@@ -52,7 +61,7 @@ const DashboardPage = async ({
             </AlertDescription>
           </Alert>
         ) : (
-          passwordsCollection.map((collection, index) => (
+          passwordsCollection.map((collection: VaultItem, index: number) => (
             <PasswordCollectionCard
               key={index}
               password={collection}

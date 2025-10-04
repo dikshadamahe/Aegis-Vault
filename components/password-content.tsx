@@ -1,6 +1,6 @@
 "use client";
 
-import { Prisma } from "@prisma/client";
+import { VaultItem } from "@/types/vault";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
@@ -10,11 +10,7 @@ import { decryptSecret } from "@/lib/crypto";
 import { usePassphrase } from "@/providers/passphrase-provider";
 
 interface PasswordContentProps {
-  password: Prisma.PasswordGetPayload<{
-    include: {
-      category: true;
-    };
-  }>;
+  password: VaultItem;
 }
 
 const PasswordContent = ({ password }: PasswordContentProps) => {

@@ -5,7 +5,7 @@ import {
   passwordSchema,
 } from "@/lib/validators/password-schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Category, Prisma } from "@prisma/client";
+import { CategoryLite, VaultItem } from "@/types/vault";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import CategoryIcon from "../category-icon";
@@ -27,22 +27,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { editPassword } from "@/actions/password-action";
 import { SetStateAction, useReducer, useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeIcon, EyeOffIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { usePassphrase } from "@/providers/passphrase-provider";
-import { deriveKeyFromPassphrase, encryptSecret } from "@/lib/crypto";
+import { encryptSecret } from "@/lib/crypto";
+import { useRouter } from "next/navigation";
 
 interface EditPasswordFormProps {
   toggleIsOpen: React.DispatchWithoutAction;
-  categories: Category[];
-  password: Prisma.PasswordGetPayload<{
-    include: {
-      category: true;
-    };
-  }>;
+  categories: CategoryLite[];
+  password: VaultItem & { password: string };
 }
 
 const EditPasswordForm = ({
@@ -53,6 +49,7 @@ const EditPasswordForm = ({
   const [seePassword, toggleSeePassword] = useReducer((state) => !state, false);
   const [notes, setNotes] = useState("");
   const { openPassphrase, getKeyForSalt, genSalt } = usePassphrase();
+  const router = useRouter();
 
   const form = useForm<TPasswordSchema>({
     resolver: zodResolver(passwordSchema),
@@ -93,15 +90,23 @@ const EditPasswordForm = ({
         notesCiphertext: encNotes?.ciphertext,
         notesNonce: encNotes?.nonce,
       };
-
-      return await editPassword({ id: password.id, values: payload as any })
-        .then((callback) => {
-          toast.success(callback.message);
-          toggleIsOpen();
-        })
-        .catch((error) => {
-          toast.error(error.message);
+      try {
+        const res = await fetch(`/api/vault/items/${password.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          const msg = data?.error || `Update failed (${res.status})`;
+          throw new Error(msg);
+        }
+        toast.success("Updated password successfully");
+        toggleIsOpen();
+        router.refresh();
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to update password");
+      }
     },
   });
 

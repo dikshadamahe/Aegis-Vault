@@ -11,16 +11,12 @@ import {
 import { LucideEdit } from "lucide-react";
 import EditPasswordForm from "./forms/edit-password-form";
 import { Button } from "./ui/button";
-import { Category, Prisma } from "@prisma/client";
+import { CategoryLite, VaultItem } from "@/types/vault";
 import { useReducer, useState } from "react";
 
 interface EditPasswordDialogProps {
-  categories: Category[];
-  password: Prisma.PasswordGetPayload<{
-    include: {
-      category: true;
-    };
-  }>;
+  categories: CategoryLite[];
+  password: VaultItem & { password: string }; 
 }
 
 const EditPasswordDialog = ({

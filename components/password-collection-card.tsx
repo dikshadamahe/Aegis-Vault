@@ -1,4 +1,4 @@
-import { Category, Prisma } from "@prisma/client";
+import { CategoryLite, VaultItem } from "@/types/vault";
 import CategoryIcon from "./category-icon";
 import DeletePasswordAlertDialog from "./delete-password-alert-dialog";
 import PasswordContent from "./password-content";
@@ -10,22 +10,16 @@ import {
 } from "./ui/accordion";
 import { Card, CardContent } from "./ui/card";
 import EditPasswordDialog from "./edit-password-dialog";
-import { cryptr } from "@/lib/crypto";
 
 interface PasswordCollectionCardProps {
-  categories: Category[];
-  password: Prisma.PasswordGetPayload<{
-    include: {
-      category: true;
-    };
-  }>;
+  categories: CategoryLite[];
+  password: VaultItem & { password?: string };
 }
 
 const PasswordCollectionCard = ({
   password,
   categories,
 }: PasswordCollectionCardProps) => {
-  const decryptPassword = cryptr.decrypt(password.password);
 
   return (
     <Card>
@@ -43,14 +37,12 @@ const PasswordCollectionCard = ({
             </AccordionTrigger>
 
             <AccordionContent className="space-y-2">
-              <PasswordContent
-                password={{ ...password, password: decryptPassword }}
-              />
+              <PasswordContent password={password as any} />
               <div className="flex items-center space-x-3 px-2">
                 <DeletePasswordAlertDialog passwordId={password.id} />
                 <EditPasswordDialog
                   categories={categories}
-                  password={{ ...password, password: decryptPassword }}
+                  password={{ ...(password as any), password: "" }}
                 />
               </div>
             </AccordionContent>

@@ -9,14 +9,19 @@ const TEST_USER = {
 const PASSPHRASE = 'Correct Horse Battery Staple!';
 
 test.describe('Vault E2E', () => {
-  test.beforeEach(async ({ baseURL, request }: { baseURL: string | undefined; request: APIRequestContext }) => {
+  test.beforeAll(async ({ baseURL, request }: { baseURL: string | undefined; request: APIRequestContext }) => {
     if (!baseURL) throw new Error('No baseURL');
-    // Seed all: user + categories + clear items for isolation
+    // Seed user and categories once per suite
     await request.post('/api/test/seed-all', { data: { email: TEST_USER.email, username: TEST_USER.username, password: TEST_USER.password, categories: [{ name: 'Web Logins', slug: 'web-logins' }] } });
   });
 
+  test.beforeEach(async ({ request }: { request: APIRequestContext }) => {
+    // Clear items before each test for isolation
+    await request.post('/api/test/clear-items', { data: { email: TEST_USER.email } });
+  });
+
   test.afterAll(async ({ request }: { request: APIRequestContext }) => {
-    await request.post('/api/test/teardown', { data: { email: TEST_USER.email } });
+    await request.post('/api/test/teardown', { data: { email: TEST_USER.email, deleteUser: true } });
   });
 
   test('create, edit, delete, search, filter, decrypt, and clipboard', async ({ page, baseURL }: { page: Page; baseURL: string | undefined }) => {

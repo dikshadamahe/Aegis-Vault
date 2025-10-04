@@ -13,6 +13,11 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const category = url.searchParams.get("category") || undefined;
   const search = url.searchParams.get("search") || undefined;
+  const pageParam = url.searchParams.get("page");
+  const pageSizeParam = url.searchParams.get("pageSize");
+  const defaultSize = parseInt(process.env.VAULT_PAGE_SIZE || "10", 10) || 10;
+  const pageSize = Math.max(1, Math.min(100, pageSizeParam ? parseInt(pageSizeParam, 10) || defaultSize : defaultSize));
+  const page = Math.max(1, pageParam ? parseInt(pageParam, 10) || 1 : 1);
 
   const user = await prisma.user.findFirst({ where: { email: session.user.email } });
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,14 +26,17 @@ export async function GET(req: Request) {
   if (category) where.category = { slug: category };
   if (search) where.websiteName = { contains: search };
 
+  const total = await prisma.password.count({ where });
   const items = await prisma.password.findMany({
     where,
     include: { category: true },
     orderBy: { updatedAt: "desc" },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
   });
 
   // Do not return legacy plaintext password
-  const sanitized = items.map((i) => ({
+  const sanitized = items.map((i: any) => ({
     id: i.id,
     websiteName: i.websiteName,
     email: i.email,
@@ -44,7 +52,14 @@ export async function GET(req: Request) {
     createdAt: i.createdAt,
   }));
 
-  return NextResponse.json({ items: sanitized });
+  return NextResponse.json({
+    items: sanitized,
+    page,
+    pageSize,
+    total,
+    hasPrev: page > 1,
+    hasNext: page * pageSize < total,
+  });
 }
 
 // POST: create item (accept ciphertext only)

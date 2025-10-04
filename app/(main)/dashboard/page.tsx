@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { VaultItem, CategoryLite } from "@/types/vault";
 import VaultStats from "../../../components/vault-stats";
+import Pagination from "@/components/pagination";
 
 interface DashboarPageProps {
   searchParams: {
@@ -39,10 +40,10 @@ const DashboardPage = async ({
     throw new Error(`Failed to load stats (${statsRes.status})`);
   }
 
-  const { items } = (await itemsRes.json()) as { items: VaultItem[] };
+  const { items, hasPrev, hasNext, page, pageSize, total } = (await itemsRes.json()) as { items: VaultItem[]; hasPrev: boolean; hasNext: boolean; page: number; pageSize: number; total: number };
   const { categories } = (await catsRes.json()) as { categories: CategoryLite[] };
   const passwordsCollection = items;
-  const { total } = (await statsRes.json()) as { total: number };
+  const stats = (await statsRes.json()) as { total: number };
 
   return (
     <>
@@ -53,9 +54,9 @@ const DashboardPage = async ({
       />
 
       <div className="mb-6 flex items-center space-x-3">
-        <SearchPassword total={total} />
+        <SearchPassword total={stats.total} />
         <AddNewPasswordDialog categories={categories} />
-        <VaultStats initialTotal={total} />
+        <VaultStats initialTotal={stats.total} />
       </div>
 
       <div className="space-y-2.5">
@@ -77,6 +78,7 @@ const DashboardPage = async ({
           ))
         )}
       </div>
+      <Pagination hasPrev={hasPrev} hasNext={hasNext} />
     </>
   );
 };

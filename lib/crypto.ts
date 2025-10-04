@@ -35,8 +35,16 @@ export const cryptr = {
 // Proper interfaces to be used by client components once implemented
 export async function deriveKeyFromPassphrase(passphrase: string, salt?: Uint8Array) {
   await initCrypto();
-  const s = sodium.randombytes_buf(16);
-  return { key: s, salt: s };
+  const s = salt ?? sodium.randombytes_buf(16);
+  const key = sodium.crypto_pwhash(
+    32,
+    passphrase,
+    s,
+    sodium.crypto_pwhash_OPSLIMIT_MODERATE,
+    sodium.crypto_pwhash_MEMLIMIT_MODERATE,
+    sodium.crypto_pwhash_ALG_ARGON2ID13
+  );
+  return { key, salt: s };
 }
 
 // cross-environment base64 helpers
@@ -66,20 +74,18 @@ function fromBase64(b64: string): Uint8Array {
 export async function encryptSecret(plaintext: string, key: Uint8Array): Promise<CipherPayload> {
   await initCrypto();
   const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
-  // Placeholder: store plaintext to keep API stable; replace with real encrypt
+  const msg = new TextEncoder().encode(plaintext);
+  const cipher = sodium.crypto_secretbox_easy(msg, nonce, key);
   return {
-    ciphertext: typeof TextEncoder !== "undefined"
-      ? toBase64(new TextEncoder().encode(plaintext))
-      : toBase64(Uint8Array.from(Array.from(plaintext).map((c) => c.charCodeAt(0)))),
+    ciphertext: toBase64(cipher),
     nonce: toBase64(nonce),
   };
 }
 
 export async function decryptSecret(payload: CipherPayload, key: Uint8Array): Promise<string> {
   await initCrypto();
-  // Placeholder: decode base64; replace with real decrypt
-  const bytes = fromBase64(payload.ciphertext);
-  return typeof TextDecoder !== "undefined"
-    ? new TextDecoder().decode(bytes)
-    : Array.from(bytes).map((n) => String.fromCharCode(n)).join("");
+  const cipher = fromBase64(payload.ciphertext);
+  const nonce = fromBase64(payload.nonce);
+  const msg = sodium.crypto_secretbox_open_easy(cipher, nonce, key);
+  return new TextDecoder().decode(msg);
 }

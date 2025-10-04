@@ -1,14 +1,11 @@
 "use server";
 
-import {
-  passwordSchema,
-  TPasswordSchema,
-} from "@/lib/validators/password-schema";
+import { encryptedVaultItemSchema, TEncryptedVaultItem } from "@/lib/validators/vault-encrypted-schema";
 import prisma from "@/prisma/db";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "./user-action";
-import { cryptr } from "@/lib/crypto";
+// crypto is now handled on the client; server stores ciphertext only
 
 export const getPasswordCollection = async (param: {
   category: string;
@@ -48,29 +45,32 @@ export const getPasswordCollection = async (param: {
   }
 };
 
-export const addNewPassword = async (values: TPasswordSchema) => {
+export const addNewPassword = async (values: TEncryptedVaultItem) => {
   const currentUser = await getCurrentUser();
 
   // validation
-  const validation = passwordSchema.safeParse({ ...values });
+  const validation = encryptedVaultItemSchema.safeParse({ ...values });
   if (!validation.success) {
     throw new Error(validation.error.issues.at(0)?.message);
   }
 
-  const { category, email, password, url, websiteName, username } = values;
-
-  const cryptedPassword = cryptr.encrypt(password);
+  const { category, email, url, websiteName, username, passwordCiphertext, passwordNonce, passwordSalt, notesCiphertext, notesNonce } = values;
 
   try {
     await prisma.password.create({
       data: {
-        password: cryptedPassword,
-        websiteName: websiteName.toLowerCase(),
-        email: email.toLowerCase() || undefined,
-        username: username?.toLowerCase() || undefined,
+        password: "", // legacy field unused; keep for schema compatibility
+        passwordCiphertext,
+        passwordNonce,
+        passwordSalt,
+        notesCiphertext: notesCiphertext || undefined,
+        notesNonce: notesNonce || undefined,
+  websiteName: websiteName.toLowerCase(),
+  email: email ? email.toLowerCase() : undefined,
+  username: username ? username.toLowerCase() : undefined,
         categoryId: category,
         userId: currentUser?.id as string,
-        url: url.toLowerCase() || undefined,
+  url: url ? url.toLowerCase() : undefined,
       },
     });
 
@@ -120,32 +120,32 @@ export const totalUserPasswordSaved = async () => {
 };
 
 export const editPassword = async (param: {
-  values: TPasswordSchema;
+  values: TEncryptedVaultItem;
   id: string;
 }) => {
-  const {
-    id,
-    values: { category, email, password, url, websiteName, username },
-  } = param;
+  const { id, values } = param;
 
   const passwordExists = await getPassword({ id });
 
   if (!passwordExists) throw new Error("Password not found");
 
-  const encryptedPassword = cryptr.encrypt(password);
-
   try {
     await prisma.password.update({
       where: { id: passwordExists.id },
       data: {
-        websiteName,
-        password: encryptedPassword,
-        email: email || undefined,
-        username: username || undefined,
-        url: url || undefined,
+        websiteName: values.websiteName,
+        password: "",
+        passwordCiphertext: values.passwordCiphertext,
+        passwordNonce: values.passwordNonce,
+        passwordSalt: values.passwordSalt,
+        notesCiphertext: values.notesCiphertext || undefined,
+        notesNonce: values.notesNonce || undefined,
+        email: values.email || undefined,
+        username: values.username || undefined,
+        url: values.url || undefined,
         category: {
           connect: {
-            id: category,
+            id: values.category,
           },
         },
       },

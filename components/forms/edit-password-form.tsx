@@ -31,6 +31,9 @@ import { editPassword } from "@/actions/password-action";
 import { SetStateAction, useReducer, useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeIcon, EyeOffIcon } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { usePassphrase } from "@/providers/passphrase-provider";
+import { deriveKeyFromPassphrase, encryptSecret } from "@/lib/crypto";
 
 interface EditPasswordFormProps {
   toggleIsOpen: React.DispatchWithoutAction;
@@ -48,6 +51,8 @@ const EditPasswordForm = ({
   toggleIsOpen,
 }: EditPasswordFormProps) => {
   const [seePassword, toggleSeePassword] = useReducer((state) => !state, false);
+  const [notes, setNotes] = useState("");
+  const { key, salt, setPassphrase } = usePassphrase();
 
   const form = useForm<TPasswordSchema>({
     resolver: zodResolver(passwordSchema),
@@ -62,15 +67,47 @@ const EditPasswordForm = ({
   });
 
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: async (values: TPasswordSchema) =>
-      await editPassword({ id: password.id, values: { ...values } })
+    mutationFn: async (values: TPasswordSchema) => {
+      let k = key, s = salt;
+      if (!k || !s) {
+        const pass = window.prompt("Enter your vault passphrase to encrypt secrets:") || "";
+        const derived = await deriveKeyFromPassphrase(pass);
+        await setPassphrase(pass);
+        k = derived.key; s = derived.salt;
+      }
+
+      const encPwd = await encryptSecret(values.password, k!);
+      const encNotes = notes ? await encryptSecret(notes, k!) : undefined;
+
+      const toB64 = (u8: Uint8Array) => {
+        if (typeof Buffer !== "undefined") return Buffer.from(u8).toString("base64");
+        let binary = "";
+        for (let i = 0; i < u8.length; i++) binary += String.fromCharCode(u8[i]);
+        return btoa(binary);
+      };
+
+      const payload = {
+        websiteName: values.websiteName,
+        url: values.url || "",
+        username: values.username || "",
+        email: values.email || "",
+        category: values.category,
+        passwordCiphertext: encPwd.ciphertext,
+        passwordNonce: encPwd.nonce,
+        passwordSalt: (s ? toB64(s) : ""),
+        notesCiphertext: encNotes?.ciphertext,
+        notesNonce: encNotes?.nonce,
+      };
+
+      return await editPassword({ id: password.id, values: payload as any })
         .then((callback) => {
           toast.success(callback.message);
           toggleIsOpen();
         })
         .catch((error) => {
           toast.error(error.message);
-        }),
+        });
+    },
   });
 
   const onSubmit = async (values: TPasswordSchema) => {
@@ -227,6 +264,20 @@ const EditPasswordForm = ({
             </FormItem>
           )}
         />
+
+        <FormItem>
+          <FormLabel>
+            Notes <span className="text-zinc-500">(Optional)</span>
+          </FormLabel>
+          <FormControl>
+            <Textarea
+              placeholder="Any additional notes..."
+              disabled={isPending}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </FormControl>
+        </FormItem>
 
         <Button type="submit" className="w-full" disabled={isPending}>
           {isPending ? "Saving..." : "Save"}

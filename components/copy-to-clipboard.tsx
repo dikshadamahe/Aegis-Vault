@@ -19,10 +19,16 @@ const CopyToClipboard = ({ className, text }: CopyToClipboardProps) => {
     try {
       copyToClipboard(text as string);
       toast.success("Copied");
-
-      setTimeout(() => {
-        copyToClipboard("");
-      }, 2000);
+      // Auto-clear clipboard and local state after ~15s
+      const timeoutMs = 15000; // 10-20s; choose 15s
+      setTimeout(async () => {
+        try {
+          // overwrite clipboard with empty string (best-effort)
+          await navigator.clipboard.writeText("");
+          copyToClipboard("");
+          toast.info("Clipboard cleared");
+        } catch {}
+      }, timeoutMs);
     } catch (error) {
       toast.error("Failed to copy");
     }

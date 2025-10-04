@@ -30,7 +30,10 @@ import { addNewPassword } from "@/actions/password-action";
 import { toast } from "sonner";
 import CategoryIcon from "../category-icon";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
-import { DispatchWithoutAction, useReducer } from "react";
+import { DispatchWithoutAction, useReducer, useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { encryptSecret, deriveKeyFromPassphrase } from "@/lib/crypto";
+import { usePassphrase } from "@/providers/passphrase-provider";
 
 interface AddNewPasswoFormProps {
   categories: Category[];
@@ -52,12 +55,49 @@ const AddNewPasswoForm = ({
       password: "",
       url: "",
       category: "",
+      // notes handled separately (encrypted), keep empty in plain values
+      // we add notes in the submit payload only after encryption
     },
   });
 
+  const { key, salt, setPassphrase } = usePassphrase();
+  const [notes, setNotes] = useState("");
+
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: async (values: TPasswordSchema) =>
-      await addNewPassword({ ...values })
+    mutationFn: async (values: TPasswordSchema) => {
+      // ensure we have a derived key; ask user for passphrase if not set
+      let k = key, s = salt;
+      if (!k || !s) {
+        const pass = window.prompt("Enter your vault passphrase to encrypt secrets:") || "";
+        const derived = await deriveKeyFromPassphrase(pass);
+        await setPassphrase(pass);
+        k = derived.key; s = derived.salt;
+      }
+
+      const encPwd = await encryptSecret(values.password, k!);
+      const encNotes = notes ? await encryptSecret(notes, k!) : undefined;
+
+      const toB64 = (u8: Uint8Array) => {
+        if (typeof Buffer !== "undefined") return Buffer.from(u8).toString("base64");
+        let binary = "";
+        for (let i = 0; i < u8.length; i++) binary += String.fromCharCode(u8[i]);
+        return btoa(binary);
+      };
+
+      const payload = {
+        websiteName: values.websiteName,
+        url: values.url || "",
+        username: values.username || "",
+        email: values.email || "",
+        category: values.category,
+        passwordCiphertext: encPwd.ciphertext,
+        passwordNonce: encPwd.nonce,
+        passwordSalt: (s ? toB64(s) : ""),
+        notesCiphertext: encNotes?.ciphertext,
+        notesNonce: encNotes?.nonce,
+      };
+
+      return await addNewPassword(payload as any)
         .then((callback) => {
           toast.success(callback.message);
           form.reset();
@@ -65,7 +105,8 @@ const AddNewPasswoForm = ({
         })
         .catch((error) => {
           toast.error(error.message);
-        }),
+        });
+    },
   });
 
   const onSubmit = async (values: TPasswordSchema) => {
@@ -215,6 +256,23 @@ const AddNewPasswoForm = ({
             </FormItem>
           )}
         />
+
+        <FormItem>
+          <FormLabel>
+            Notes <span className="text-zinc-500">(Optional)</span>
+          </FormLabel>
+          <FormControl>
+            <Textarea
+              placeholder="Any additional notes..."
+              disabled={isPending}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </FormControl>
+          <FormDescription>
+            Notes are encrypted locally before upload.
+          </FormDescription>
+        </FormItem>
 
         <Button type="submit" className="w-full" disabled={isPending}>
           {isPending ? "Creating..." : "Create"}

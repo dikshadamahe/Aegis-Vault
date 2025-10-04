@@ -7,6 +7,7 @@ import ThemeProvider from "@/providers/theme-provider";
 import { cn } from "@/lib/utils";
 import { SessionProvider } from "next-auth/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { PassphraseProvider } from "@/providers/passphrase-provider";
 
 export const metadata: Metadata = {
   title: "Manage your password easily using Passweird",
@@ -28,9 +29,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ReactQueryProvider>
-            {children}
-            <SpeedInsights />
-            <Toaster position="bottom-right" richColors theme="system" expand />
+            <PassphraseProvider>
+              {children}
+              <SpeedInsights />
+              <Toaster position="bottom-right" richColors theme="system" expand />
+            </PassphraseProvider>
           </ReactQueryProvider>
         </ThemeProvider>
       </body>

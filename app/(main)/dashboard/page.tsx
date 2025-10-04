@@ -1,11 +1,3 @@
-export default function DashboardPage() {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold">Your Vault</h1>
-      <p className="text-muted-foreground">Items will appear here.</p>
-    </div>
-  );
-}
 import { getCategories } from "@/actions/category-action";
 import {
   getPasswordCollection,

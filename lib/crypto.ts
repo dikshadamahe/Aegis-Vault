@@ -1,6 +1,7 @@
 // Placeholder crypto wiring using libsodium-wrappers. Avoids plaintext storage.
 // NOTE: Implement real key derivation and encryption before production.
-import sodium from "libsodium-wrappers";
+// dynamic sodium import to avoid compile-time dependency
+let sodium: any;
 
 type CipherPayload = {
   ciphertext: string; // base64
@@ -10,8 +11,12 @@ type CipherPayload = {
 
 let ready: Promise<void> | null = null;
 export const initCrypto = () => {
-  if (!ready) ready = sodium.ready as unknown as Promise<void>;
-  return ready;
+  if (!ready)
+    ready = (async () => {
+      if (!sodium) sodium = await import("libsodium-wrappers");
+      await sodium.ready;
+    })();
+  return ready as Promise<void>;
 };
 
 // Temporary API compatible shim for existing code paths expecting `cryptr.encrypt/decrypt`.

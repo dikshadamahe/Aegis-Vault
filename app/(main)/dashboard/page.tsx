@@ -22,10 +22,11 @@ const DashboardPage = async ({
   if (category) qs.set("category", String(category));
   if (search) qs.set("search", String(search));
 
+  const querySuffix = qs.toString() ? `?${qs}` : "";
   const [itemsRes, catsRes, statsRes] = await Promise.all([
-    fetch(`/api/vault/items${qs.toString() ? `?${qs}` : ""}`, { cache: "no-store" }),
+    fetch(`/api/vault/items${querySuffix}`, { cache: "no-store" }),
     fetch(`/api/vault/categories`, { cache: "no-store" }),
-    fetch(`/api/vault/items/stats`, { cache: "no-store" }),
+    fetch(`/api/vault/items/stats${querySuffix}`, { cache: "no-store" }),
   ]);
 
   if (!itemsRes.ok) {

@@ -63,6 +63,21 @@ test.describe('Vault E2E', () => {
     // close dialog for now
     await page.keyboard.press('Escape');
 
+    // Intercept vault API responses to ensure no plaintext
+    await page.route('**/api/vault/**', async (route) => {
+      const res = await route.fetch();
+      const cloned = res.clone();
+      const contentType = res.headers().get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const json = await cloned.json().catch(() => null);
+        if (json) {
+          const jsonStr = JSON.stringify(json).toLowerCase();
+          expect(jsonStr.includes('"password"')).toBeFalsy(); // no plaintext password key in payloads
+        }
+      }
+      await route.fulfill({ response: res });
+    });
+
     // 2) Create a new password item
     await page.getByRole('button', { name: /add new password/i }).click();
     await page.getByRole('combobox').click();
@@ -98,7 +113,7 @@ test.describe('Vault E2E', () => {
     await expect(page.getByText(/example/i)).toBeVisible();
 
     // 5) Reveal password (decrypt client-side)
-    const revealBtn = page.getByRole('button', { name: /(eye|show)/i }).first();
+  const revealBtn = page.getByTestId('reveal-password').first();
     await revealBtn.click();
     // If passphrase expired, modal appears again
     const maybeModal = page.getByRole('dialog').filter({ hasText: /unlock vault/i });
@@ -110,7 +125,7 @@ test.describe('Vault E2E', () => {
     await expect(page.getByText('Secret#12345')).toBeVisible();
 
     // 6) Copy to clipboard and auto-clear
-    const copyBtn = page.getByRole('button', { name: /copy/i }).first().or(page.getByRole('button', { name: /check/i }));
+  const copyBtn = page.getByTestId('copy-button').first();
     await copyBtn.click();
     // Verify clipboard contains value
     const clipboardText = await page.evaluate(() => navigator.clipboard.readText());

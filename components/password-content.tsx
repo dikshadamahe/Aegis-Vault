@@ -57,6 +57,7 @@ const PasswordContent = ({ password }: PasswordContentProps) => {
       <p className="inline-flex items-center">
         Password: {!passwordMask ? decrypted : maskPassword(8)}
         <Button
+          data-testid="reveal-password"
           variant="ghost"
           size="sm"
           className="ml-0.5"

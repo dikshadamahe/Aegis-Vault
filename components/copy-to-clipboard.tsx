@@ -36,6 +36,7 @@ const CopyToClipboard = ({ className, text }: CopyToClipboardProps) => {
 
   return (
     <Button
+      data-testid="copy-button"
       variant="outline"
       size="icon"
       onClick={handleCopyClicked}

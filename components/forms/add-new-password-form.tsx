@@ -134,6 +134,7 @@ const AddNewPasswoForm = ({
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger
+                    data-testid="category-select"
                     autoFocus
                     disabled={isPending}
                     className="capitalize"
@@ -170,8 +171,8 @@ const AddNewPasswoForm = ({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Website Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter website name" {...field} />
+                <FormControl>
+                  <Input data-testid="website-input" placeholder="Enter website name" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -187,8 +188,8 @@ const AddNewPasswoForm = ({
               <FormLabel>
                 Email <span className="text-zinc-500">(Optional)</span>
               </FormLabel>
-              <FormControl>
-                <Input placeholder="Enter email address" {...field} />
+                <FormControl>
+                  <Input data-testid="email-input" placeholder="Enter email address" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -221,6 +222,7 @@ const AddNewPasswoForm = ({
               <FormControl>
                 <div className="flex items-center space-x-3">
                   <Input
+                    data-testid="password-input"
                     type={seePassword ? "text" : "password"}
                     placeholder="Enter password"
                     {...field}
@@ -256,8 +258,8 @@ const AddNewPasswoForm = ({
               <FormLabel>
                 URL <span className="text-zinc-500">(Optional)</span>
               </FormLabel>
-              <FormControl>
-                <Input placeholder="Enter website URL" {...field} />
+                <FormControl>
+                  <Input data-testid="url-input" placeholder="Enter website URL" {...field} />
               </FormControl>
 
               <FormMessage />
@@ -271,6 +273,7 @@ const AddNewPasswoForm = ({
           </FormLabel>
           <FormControl>
             <Textarea
+              data-testid="notes-input"
               placeholder="Any additional notes..."
               disabled={isPending}
               value={notes}

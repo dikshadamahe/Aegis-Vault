@@ -29,7 +29,7 @@ const EditPasswordDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={toggleIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="secondary" className="flex-1" size="sm">
+        <Button data-testid="edit-button" variant="secondary" className="flex-1" size="sm">
           <LucideEdit className="mr-2 h-4 w-4" />
           Edit
         </Button>

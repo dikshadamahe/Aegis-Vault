@@ -57,15 +57,20 @@ export default function VaultPage() {
   });
 
   const handleDecryptPassword = async (item: VaultItem) => {
-    const key = await getKeyForSalt(item.passwordSalt);
-    const decrypted = await decryptSecret(
-      {
-        ciphertext: item.passwordCiphertext,
-        nonce: item.passwordNonce,
-      },
-      key
-    );
-    return decrypted;
+    try {
+      const key = await getKeyForSalt(item.passwordSalt);
+      const decrypted = await decryptSecret(
+        {
+          ciphertext: item.passwordCiphertext,
+          nonce: item.passwordNonce,
+        },
+        key
+      );
+      return decrypted;
+    } catch (error) {
+      console.error("Decryption failed for item:", item.id, error);
+      throw new Error("Failed to decrypt password. Please check your passphrase.");
+    }
   };
 
   // Group passwords by category
@@ -126,7 +131,7 @@ export default function VaultPage() {
         transition={{ duration: 0.5, ease: "easeInOut" }}
         className="mb-8"
       >
-        <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-[var(--aegis-text-heading)] to-[var(--aegis-accent-teal)] bg-clip-text text-transparent">
+        <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-[var(--aegis-text-heading)] to-[var(--aegis-accent-teal)] bg-clip-text text-transparent leading-tight overflow-visible">
           Aegis Vault
         </h1>
         <p className="text-[var(--aegis-text-muted)] text-lg">

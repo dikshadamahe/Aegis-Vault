@@ -35,28 +35,34 @@ export function PasswordAccordionCard({
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const CategoryIcon = categoryIcon[category.slug] || Globe;
 
   const handleTogglePassword = async () => {
     if (!showPassword && !password) {
       setLoading(true);
+      setError(null);
       try {
         const decrypted = await onDecryptPassword();
         setPassword(decrypted);
         setShowPassword(true);
       } catch (error) {
-        toast.error("Failed to decrypt password");
+        const errorMessage = error instanceof Error ? error.message : "Failed to decrypt password";
+        setError(errorMessage);
+        toast.error(errorMessage);
       } finally {
         setLoading(false);
       }
     } else {
       setShowPassword(!showPassword);
+      setError(null);
     }
   };
 
   const handleCopyPassword = async () => {
     setLoading(true);
+    setError(null);
     try {
       const decrypted = password || (await onDecryptPassword());
       if (!password) setPassword(decrypted);
@@ -65,7 +71,9 @@ export function PasswordAccordionCard({
         description: "Password copied to clipboard securely.",
       });
     } catch (error) {
-      toast.error("Failed to copy password");
+      const errorMessage = error instanceof Error ? error.message : "Failed to copy password";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -171,8 +179,16 @@ export function PasswordAccordionCard({
                     Password
                   </label>
                   <div className="flex items-center gap-3 mt-2">
-                    <div className="flex-1 px-4 py-3 rounded-lg bg-[var(--aegis-bg-elevated)] border border-[var(--aegis-border)] font-mono text-sm text-white">
-                      {showPassword && password ? password : maskedPassword}
+                    <div className={`flex-1 px-4 py-3 rounded-lg bg-[var(--aegis-bg-elevated)] border font-mono text-sm text-white ${
+                      error ? "border-red-400" : "border-[var(--aegis-border)]"
+                    }`}>
+                      {error ? (
+                        <span className="text-red-400 text-xs">{error}</span>
+                      ) : showPassword && password ? (
+                        password
+                      ) : (
+                        maskedPassword
+                      )}
                     </div>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -185,6 +201,11 @@ export function PasswordAccordionCard({
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </motion.button>
                   </div>
+                  {error && (
+                    <p className="text-xs text-red-400 mt-1">
+                      Try re-entering your passphrase
+                    </p>
+                  )}
                 </div>
               </div>
 

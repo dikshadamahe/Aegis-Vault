@@ -9,7 +9,7 @@ import { rateLimit } from "@/lib/rate-limit";
 // GET: list items for current user; supports ?category=&search=
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = new URL(req.url);
   const category = url.searchParams.get("category") || undefined;
   const search = url.searchParams.get("search") || undefined;
@@ -19,17 +19,51 @@ export async function GET(req: Request) {
   const pageSize = Math.max(1, Math.min(100, pageSizeParam ? parseInt(pageSizeParam, 10) || defaultSize : defaultSize));
   const page = Math.max(1, pageParam ? parseInt(pageParam, 10) || 1 : 1);
 
-  const user = await prisma.user.findFirst({ where: { email: session.user.email } });
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Prefer userId from session token (set in callbacks) to avoid an extra DB read
+  const userId = (session.user as any).id as string | undefined;
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    if (!session.user.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    resolvedUserId = user.id;
+  }
 
-  const where: any = { userId: user.id };
-  if (category) where.category = { slug: category };
-  if (search) where.websiteName = { contains: search };
+  // Build query with direct ids to avoid $lookup when filtering by category slug
+  let categoryId: string | undefined;
+  if (category) {
+    const cat = await prisma.category.findFirst({
+      where: { userId: resolvedUserId, slug: category },
+      select: { id: true },
+    });
+    if (!cat) {
+      return NextResponse.json({ items: [], page, pageSize, total: 0, hasPrev: page > 1, hasNext: false });
+    }
+    categoryId = cat.id;
+  }
+
+  const where: any = { userId: resolvedUserId };
+  if (categoryId) where.categoryId = categoryId;
+  if (search) where.websiteName = { contains: search.toLowerCase() };
 
   const total = await prisma.password.count({ where });
   const items = await prisma.password.findMany({
     where,
-    include: { category: true },
+    select: {
+      id: true,
+      websiteName: true,
+      email: true,
+      username: true,
+      url: true,
+      passwordCiphertext: true,
+      passwordNonce: true,
+      passwordSalt: true,
+      notesCiphertext: true,
+      notesNonce: true,
+      updatedAt: true,
+      createdAt: true,
+      category: { select: { id: true, name: true, slug: true } },
+    },
     orderBy: [
       { updatedAt: "desc" },
       { createdAt: "desc" },
@@ -39,25 +73,8 @@ export async function GET(req: Request) {
     take: pageSize,
   });
 
-  // Do not return legacy plaintext password
-  const sanitized = items.map((i: any) => ({
-    id: i.id,
-    websiteName: i.websiteName,
-    email: i.email,
-    username: i.username,
-    url: i.url,
-    category: i.category,
-    passwordCiphertext: i.passwordCiphertext,
-    passwordNonce: i.passwordNonce,
-    passwordSalt: i.passwordSalt,
-    notesCiphertext: i.notesCiphertext,
-    notesNonce: i.notesNonce,
-    updatedAt: i.updatedAt,
-    createdAt: i.createdAt,
-  }));
-
   return NextResponse.json({
-    items: sanitized,
+    items,
     page,
     pageSize,
     total,
@@ -69,7 +86,7 @@ export async function GET(req: Request) {
 // POST: create item (accept ciphertext only)
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!(await rateLimit("create:" + session.user.email, 10, 60_000))) {
     return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
@@ -87,12 +104,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Plaintext fields are not allowed" }, { status: 400 });
   }
 
-  const user = await prisma.user.findFirst({ where: { email: session.user.email } });
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = (session.user as any).id as string | undefined;
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    if (!session.user.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    resolvedUserId = user.id;
+  }
 
   const created = await prisma.password.create({
     data: {
-      userId: user.id,
+      userId: resolvedUserId,
       categoryId: data.category,
       websiteName: data.websiteName.toLowerCase(),
       email: data.email ? data.email.toLowerCase() : undefined,
@@ -105,24 +128,24 @@ export async function POST(req: Request) {
       notesCiphertext: data.notesCiphertext || undefined,
       notesNonce: data.notesNonce || undefined,
     },
-    include: { category: true },
+    select: {
+      id: true,
+      websiteName: true,
+      email: true,
+      username: true,
+      url: true,
+      passwordCiphertext: true,
+      passwordNonce: true,
+      passwordSalt: true,
+      notesCiphertext: true,
+      notesNonce: true,
+      createdAt: true,
+      updatedAt: true,
+      category: { select: { id: true, name: true, slug: true } },
+    },
   });
 
   return NextResponse.json({
-    item: {
-      id: created.id,
-      websiteName: created.websiteName,
-      email: created.email,
-      username: created.username,
-      url: created.url,
-      category: created.category,
-      passwordCiphertext: created.passwordCiphertext,
-      passwordNonce: created.passwordNonce,
-      passwordSalt: created.passwordSalt,
-      notesCiphertext: created.notesCiphertext,
-      notesNonce: created.notesNonce,
-      createdAt: created.createdAt,
-      updatedAt: created.updatedAt,
-    },
+    item: created,
   });
 }

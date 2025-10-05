@@ -5,8 +5,13 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const debug = url.searchParams.get("debug") === "1";
   try {
-    // Perform a trivial query to verify Prisma<->DB connectivity
-    await prisma.user.findFirst();
+    // Prefer a very cheap ping using $queryRaw when supported by Mongo connector
+    // Falls back to a trivial read query
+    try {
+      await (prisma as any).$runCommandRaw?.({ ping: 1 });
+    } catch {
+      await prisma.user.findFirst();
+    }
     const payload: any = { status: "ok" };
     if (debug) {
       const uri = process.env.MONGODB_URI || "";

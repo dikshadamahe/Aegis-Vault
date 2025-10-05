@@ -71,14 +71,16 @@ model Category {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @db.ObjectId
   name      String
-  slug      String   @unique
+  slug      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   passwords Password[]
 
-  @@index([name, slug])
+  @@unique([userId, slug])
+  @@index([userId])
+  @@index([name])
 }
 
 model Password {
@@ -105,5 +107,8 @@ model Password {
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
 
+  @@index([userId])
+  @@index([categoryId])
   @@index([websiteName])
+  @@index([userId, updatedAt])
 }

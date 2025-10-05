@@ -6,11 +6,21 @@ import { z } from "zod";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const user = await prisma.user.findFirst({ where: { email: session.user.email } });
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = ((session.user as any).id as string | undefined) ?? null;
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    if (!session.user.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    resolvedUserId = user.id;
+  }
 
-  const categories = await prisma.category.findMany({ where: { userId: user.id }, orderBy: { name: "asc" } });
+  const categories = await prisma.category.findMany({
+    where: { userId: resolvedUserId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, slug: true },
+  });
   return NextResponse.json({ categories });
 }
 
@@ -21,9 +31,15 @@ const createCategorySchema = z.object({
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const user = await prisma.user.findFirst({ where: { email: session.user.email } });
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = ((session.user as any).id as string | undefined) ?? null;
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    if (!session.user.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    resolvedUserId = user.id;
+  }
 
   const body = await req.json().catch(() => null);
   const parsed = createCategorySchema.safeParse(body);
@@ -35,11 +51,12 @@ export async function POST(req: Request) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-  const existing = await prisma.category.findFirst({ where: { userId: user.id, slug } });
+  const existing = await prisma.category.findFirst({ where: { userId: resolvedUserId, slug } });
   if (existing) return NextResponse.json({ error: "Category already exists" }, { status: 409 });
 
   const created = await prisma.category.create({
-    data: { userId: user.id, name, slug },
+    data: { userId: resolvedUserId, name, slug },
+    select: { id: true, name: true, slug: true },
   });
 
   return NextResponse.json({ category: created });

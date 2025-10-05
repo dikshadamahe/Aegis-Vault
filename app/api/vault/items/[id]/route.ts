@@ -9,11 +9,34 @@ type Params = { params: { id: string } };
 
 export async function GET(_: Request, { params }: Params) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const user = await prisma.user.findFirst({ where: { email: session.user.email } });
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = ((session.user as any).id as string | undefined) ?? null;
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    if (!session.user.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const u = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!u) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    resolvedUserId = u.id;
+  }
 
-  const item = await prisma.password.findFirst({ where: { id: params.id, userId: user.id }, include: { category: true } });
+  const item = await prisma.password.findFirst({
+    where: { id: params.id, userId: resolvedUserId },
+    select: {
+      id: true,
+      websiteName: true,
+      email: true,
+      username: true,
+      url: true,
+      passwordCiphertext: true,
+      passwordNonce: true,
+      passwordSalt: true,
+      notesCiphertext: true,
+      notesNonce: true,
+      createdAt: true,
+      updatedAt: true,
+      category: { select: { id: true, name: true, slug: true } },
+    },
+  });
   if (!item) return NextResponse.json({ error: "Not Found" }, { status: 404 });
 
   return NextResponse.json({
@@ -37,7 +60,7 @@ export async function GET(_: Request, { params }: Params) {
 
 export async function PATCH(req: Request, { params }: Params) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!(await rateLimit("update:" + session.user.email, 10, 60_000))) {
     return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
@@ -55,16 +78,26 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ error: "Plaintext fields are not allowed" }, { status: 400 });
   }
 
-  const sessionUser = await prisma.user.findFirst({ where: { email: session.user.email } });
-  if (!sessionUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = ((session.user as any).id as string | undefined) ?? null;
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    if (!session.user.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const u = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!u) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    resolvedUserId = u.id;
+  }
 
-  const existing = await prisma.password.findFirst({ where: { id: params.id, userId: sessionUser.id } });
+  const existing = await prisma.password.findFirst({ where: { id: params.id, userId: resolvedUserId } });
   if (!existing) return NextResponse.json({ error: "Not Found" }, { status: 404 });
+
+  // Ensure target category belongs to the same user
+  const targetCategory = await prisma.category.findFirst({ where: { id: data.category, userId: resolvedUserId }, select: { id: true } });
+  if (!targetCategory) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
 
   const updated = await prisma.password.update({
     where: { id: existing.id },
     data: {
-      categoryId: data.category,
+      categoryId: targetCategory.id,
       websiteName: data.websiteName.toLowerCase(),
       email: data.email ? data.email.toLowerCase() : undefined,
       username: data.username ? data.username.toLowerCase() : undefined,
@@ -76,7 +109,21 @@ export async function PATCH(req: Request, { params }: Params) {
       notesCiphertext: data.notesCiphertext || undefined,
       notesNonce: data.notesNonce || undefined,
     },
-    include: { category: true },
+    select: {
+      id: true,
+      websiteName: true,
+      email: true,
+      username: true,
+      url: true,
+      passwordCiphertext: true,
+      passwordNonce: true,
+      passwordSalt: true,
+      notesCiphertext: true,
+      notesNonce: true,
+      createdAt: true,
+      updatedAt: true,
+      category: { select: { id: true, name: true, slug: true } },
+    },
   });
 
   return NextResponse.json({
@@ -100,16 +147,22 @@ export async function PATCH(req: Request, { params }: Params) {
 
 export async function DELETE(_: Request, { params }: Params) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!(await rateLimit("delete:" + session.user.email, 10, 60_000))) {
     return NextResponse.json({ error: "Too Many Requests" }, { status: 429 });
   }
 
-  const user = await prisma.user.findFirst({ where: { email: session.user.email } });
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = ((session.user as any).id as string | undefined) ?? null;
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    if (!session.user.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const u = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!u) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    resolvedUserId = u.id;
+  }
 
-  const existing = await prisma.password.findFirst({ where: { id: params.id, userId: user.id } });
+  const existing = await prisma.password.findFirst({ where: { id: params.id, userId: resolvedUserId } });
   if (!existing) return NextResponse.json({ error: "Not Found" }, { status: 404 });
 
   await prisma.password.delete({ where: { id: existing.id } });

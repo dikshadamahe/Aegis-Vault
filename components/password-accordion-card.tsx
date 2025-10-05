@@ -6,6 +6,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { categoryIcon } from "@/constants/category-icon";
 import { WebsiteLogo } from "./website-logo";
+import PassphraseModal from "./passphrase-modal";
+import { decryptWithEnvelope, decryptSecret } from "@/lib/crypto";
 
 type PasswordAccordionCardProps = {
   id: string;
@@ -15,9 +17,14 @@ type PasswordAccordionCardProps = {
   url?: string;
   notes?: string;
   category: { name: string; slug: string };
+  // Encryption data
+  passwordCiphertext: string;
+  passwordNonce: string;
+  passwordSalt: string;
+  passwordEncryptedDek?: string;
+  passwordDekNonce?: string;
   onEdit: () => void;
   onDelete: () => void;
-  onDecryptPassword: () => Promise<string>;
 };
 
 export function PasswordAccordionCard({
@@ -28,33 +35,71 @@ export function PasswordAccordionCard({
   url,
   notes,
   category,
+  passwordCiphertext,
+  passwordNonce,
+  passwordSalt,
+  passwordEncryptedDek,
+  passwordDekNonce,
   onEdit,
   onDelete,
-  onDecryptPassword,
 }: PasswordAccordionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const CategoryIcon = categoryIcon[category.slug] || Globe;
 
-  const handleTogglePassword = async () => {
-    if (!showPassword && !password) {
-      setLoading(true);
-      setError(null);
-      try {
-        const decrypted = await onDecryptPassword();
-        setPassword(decrypted);
-        setShowPassword(true);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to decrypt password";
-        setError(errorMessage);
-        toast.error(errorMessage);
-      } finally {
-        setLoading(false);
+  // STATELESS DECRYPTION: Fresh operation each time
+  const performDecryption = async (key: Uint8Array) => {
+    setLoading(true);
+    setError(null);
+    try {
+      let decrypted: string;
+      
+      // Check if envelope encryption is used (new architecture)
+      if (passwordEncryptedDek && passwordDekNonce) {
+        // ENVELOPE DECRYPTION: New secure architecture
+        decrypted = await decryptWithEnvelope(
+          {
+            ciphertext: passwordCiphertext,
+            nonce: passwordNonce,
+            encryptedDek: passwordEncryptedDek,
+            dekNonce: passwordDekNonce,
+          },
+          key
+        );
+      } else {
+        // LEGACY DECRYPTION: Fallback for old data
+        decrypted = await decryptSecret(
+          {
+            ciphertext: passwordCiphertext,
+            nonce: passwordNonce,
+          },
+          key
+        );
       }
+      
+      setPassword(decrypted);
+      setShowPassword(true);
+      toast.success("Password decrypted!");
+    } catch (error) {
+      console.error("Decryption failed for item:", id, error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to decrypt password";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+      setIsModalOpen(false);
+    }
+  };
+
+  const handleTogglePassword = () => {
+    if (!showPassword && !password) {
+      // Open modal to get passphrase
+      setIsModalOpen(true);
     } else {
       setShowPassword(!showPassword);
       setError(null);
@@ -62,21 +107,15 @@ export function PasswordAccordionCard({
   };
 
   const handleCopyPassword = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const decrypted = password || (await onDecryptPassword());
-      if (!password) setPassword(decrypted);
-      await navigator.clipboard.writeText(decrypted);
+    if (password) {
+      // Already decrypted, just copy
+      await navigator.clipboard.writeText(password);
       toast.success("Password copied!", {
         description: "Password copied to clipboard securely.",
       });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to copy password";
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
+    } else {
+      // Need to decrypt first
+      setIsModalOpen(true);
     }
   };
 
@@ -254,6 +293,15 @@ export function PasswordAccordionCard({
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* Passphrase Modal - Stateless decryption */}
+      <PassphraseModal
+        open={isModalOpen}
+        salt={passwordSalt}
+        reason="Enter passphrase to decrypt"
+        onSuccess={performDecryption}
+        onCancel={() => setIsModalOpen(false)}
+      />
     </motion.div>
   );
 }

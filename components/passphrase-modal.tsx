@@ -3,15 +3,18 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, X } from "lucide-react";
+import { deriveKeyFromPassphrase } from "@/lib/crypto";
+import { toast } from "sonner";
 
 type Props = {
   open: boolean;
   reason?: string;
-  onSubmit: (passphrase: string) => Promise<void>;
+  salt: string; // base64 encoded salt
+  onSuccess: (key: Uint8Array) => Promise<void>;
   onCancel: () => void;
 };
 
-export default function PassphraseModal({ open, reason, onSubmit, onCancel }: Props) {
+export default function PassphraseModal({ open, reason, salt, onSuccess, onCancel }: Props) {
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -20,8 +23,18 @@ export default function PassphraseModal({ open, reason, onSubmit, onCancel }: Pr
     if (!value.trim()) return;
     setLoading(true);
     try {
-      await onSubmit(value);
+      // Convert base64 salt to Uint8Array
+      const saltBytes = base64ToU8(salt);
+      
+      // Derive key from passphrase using libsodium
+      const { key } = await deriveKeyFromPassphrase(value, saltBytes);
+      
+      // Call the success callback with the derived key
+      await onSuccess(key);
       setValue("");
+    } catch (error) {
+      console.error("Key derivation failed:", error);
+      toast.error("Failed to derive key. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -92,4 +105,12 @@ export default function PassphraseModal({ open, reason, onSubmit, onCancel }: Pr
       )}
     </AnimatePresence>
   );
+}
+
+// Helper to convert base64 to Uint8Array
+function base64ToU8(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
 }

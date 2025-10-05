@@ -6,7 +6,6 @@ import ReactQueryProvider from "@/providers/react-query-provider";
 import ThemeProvider from "@/providers/theme-provider";
 import { cn } from "@/lib/utils";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { PassphraseProvider } from "@/providers/passphrase-provider";
 import Providers from "@/components/providers";
 
 export const metadata: Metadata = {
@@ -30,11 +29,9 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <ReactQueryProvider>
-              <PassphraseProvider>
-                {children}
-                <SpeedInsights />
-                <Toaster position="bottom-right" richColors theme="dark" expand />
-              </PassphraseProvider>
+              {children}
+              <SpeedInsights />
+              <Toaster position="bottom-right" richColors theme="dark" expand />
             </ReactQueryProvider>
           </ThemeProvider>
         </Providers>

@@ -10,29 +10,29 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PassphraseProvider } from "@/providers/passphrase-provider";
 
 export const metadata: Metadata = {
-  title: "Manage your password easily using Passweird",
-  description: "Password manager. built using nextjs",
+  title: "Aegis Vault — Secure Password Manager",
+  description: "A hyper-minimalist, secure password manager with client-side encryption.",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.NodeNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={cn(GeistSans.className, "antialiased dark:bg-zinc-900")}>
+    <html lang="en" className="dark">
+      <body className={cn("antialiased font-inter")}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <ReactQueryProvider>
             <PassphraseProvider>
               {children}
               <SpeedInsights />
-              <Toaster position="bottom-right" richColors theme="system" expand />
+              <Toaster position="bottom-right" richColors theme="dark" expand />
             </PassphraseProvider>
           </ReactQueryProvider>
         </ThemeProvider>

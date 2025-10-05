@@ -2,8 +2,10 @@
 
 import { AegisLayout } from "@/components/aegis-layout";
 import { VaultCard } from "@/components/vault-card";
+import { AddPasswordModal } from "@/components/add-password-modal";
+import { ManageCategoriesModal } from "@/components/manage-categories-modal";
 import { motion } from "framer-motion";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, FolderCog } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { usePassphrase } from "@/providers/passphrase-provider";
@@ -24,6 +26,8 @@ type VaultItem = {
 export default function VaultPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
   const { getKeyForSalt } = usePassphrase();
 
   // Fetch vault items
@@ -127,10 +131,22 @@ export default function VaultPage() {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
+          onClick={() => setIsAddModalOpen(true)}
           className="btn-accent flex items-center justify-center gap-2 whitespace-nowrap"
         >
           <Plus className="w-5 h-5" />
           Add New
+        </motion.button>
+
+        {/* Manage Categories Button */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setIsCategoriesModalOpen(true)}
+          className="px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center gap-2 whitespace-nowrap transition-colors"
+          title="Manage Categories"
+        >
+          <FolderCog className="w-5 h-5" />
         </motion.button>
       </motion.div>
 
@@ -154,7 +170,9 @@ export default function VaultPage() {
             <p className="text-[var(--aegis-text-muted)] mb-6">
               Start by adding your first password
             </p>
-            <button className="btn-accent">Add Your First Password</button>
+            <button onClick={() => setIsAddModalOpen(true)} className="btn-accent">
+              Add Your First Password
+            </button>
           </div>
         </motion.div>
       ) : (
@@ -175,6 +193,19 @@ export default function VaultPage() {
           ))}
         </motion.div>
       )}
+
+      {/* Add Password Modal */}
+      <AddPasswordModal
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        categories={categories || []}
+      />
+
+      {/* Manage Categories Modal */}
+      <ManageCategoriesModal
+        open={isCategoriesModalOpen}
+        onClose={() => setIsCategoriesModalOpen(false)}
+      />
     </AegisLayout>
   );
 }

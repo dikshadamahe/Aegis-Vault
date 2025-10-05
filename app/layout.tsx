@@ -5,9 +5,9 @@ import { Toaster } from "@/components/ui/sonner";
 import ReactQueryProvider from "@/providers/react-query-provider";
 import ThemeProvider from "@/providers/theme-provider";
 import { cn } from "@/lib/utils";
-import { SessionProvider } from "next-auth/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PassphraseProvider } from "@/providers/passphrase-provider";
+import Providers from "@/components/providers";
 
 export const metadata: Metadata = {
   title: "Aegis Vault — Secure Password Manager",
@@ -22,20 +22,22 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={cn("antialiased font-inter")}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          <ReactQueryProvider>
-            <PassphraseProvider>
-              {children}
-              <SpeedInsights />
-              <Toaster position="bottom-right" richColors theme="dark" expand />
-            </PassphraseProvider>
-          </ReactQueryProvider>
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            <ReactQueryProvider>
+              <PassphraseProvider>
+                {children}
+                <SpeedInsights />
+                <Toaster position="bottom-right" richColors theme="dark" expand />
+              </PassphraseProvider>
+            </ReactQueryProvider>
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );

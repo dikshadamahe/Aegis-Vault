@@ -87,14 +87,14 @@ export default function SignUpPage() {
           </div>
         </div>
 
-        <h1 className="text-3xl font-bold text-center mb-2">Create Account</h1>
+        <h1 className="text-3xl font-bold text-center mb-2 text-white">Create Account</h1>
         <p className="text-center text-[var(--aegis-text-muted)] mb-8">
           Start securing your passwords today
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium mb-2 text-[var(--aegis-text-body)]">
+            <label className="block text-sm font-medium mb-2 text-white">
               Username
             </label>
             <input
@@ -111,7 +111,7 @@ export default function SignUpPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-[var(--aegis-text-body)]">
+            <label className="block text-sm font-medium mb-2 text-white">
               Email
             </label>
             <input
@@ -126,7 +126,7 @@ export default function SignUpPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-[var(--aegis-text-body)]">
+            <label className="block text-sm font-medium mb-2 text-white">
               Password
             </label>
             <input

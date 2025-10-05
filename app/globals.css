@@ -76,7 +76,7 @@
   
   /* Accent Button */
   .btn-accent {
-    @apply px-6 py-3 rounded-lg font-medium transition-all duration-200;
+    @apply px-6 py-3 rounded-lg font-medium transition-all duration-300;
     background: var(--aegis-accent-teal);
     color: #0D1117;
     box-shadow: 0 0 20px rgba(0, 191, 165, 0.3);
@@ -93,7 +93,7 @@
   
   /* Ghost Button */
   .btn-ghost {
-    @apply px-4 py-2 rounded-md font-medium transition-all duration-200;
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-300;
     background: transparent;
     border: 1px solid var(--aegis-border);
     color: var(--aegis-text-body);
@@ -102,25 +102,61 @@
   .btn-ghost:hover {
     background: var(--aegis-bg-card);
     border-color: var(--aegis-border-hover);
+    color: var(--aegis-text-heading);
   }
   
-  /* Input Field */
+  /* Input Field - Reskinned for glassmorphic theme */
   .input-glass {
-    @apply px-4 py-3 rounded-lg w-full transition-all duration-200;
-    background: var(--aegis-bg-card);
+    @apply px-4 py-3 rounded-lg w-full transition-all duration-300;
+    background: var(--aegis-bg-elevated);
     backdrop-filter: blur(16px);
     border: 1px solid var(--aegis-border);
-    color: var(--aegis-text-body);
+    color: var(--aegis-text-heading);
+    font-size: 0.95rem;
   }
   
   .input-glass:focus {
     outline: none;
     border-color: var(--aegis-accent-teal);
     box-shadow: 0 0 0 3px rgba(0, 191, 165, 0.1);
+    background: rgba(30, 35, 42, 0.95);
   }
   
   .input-glass::placeholder {
     color: var(--aegis-text-muted);
+  }
+  
+  /* Select Dropdown - Custom styling */
+  select.input-glass {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238B949E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25rem;
+    padding-right: 2.5rem;
+    cursor: pointer;
+  }
+  
+  select.input-glass:hover {
+    border-color: var(--aegis-border-hover);
+  }
+  
+  select.input-glass option {
+    background: var(--aegis-bg-elevated);
+    color: var(--aegis-text-heading);
+    padding: 0.75rem;
+  }
+  
+  /* Search input specific styling */
+  input[type="search"].input-glass,
+  input[type="text"].input-glass {
+    -webkit-appearance: none;
+  }
+  
+  /* Textarea */
+  textarea.input-glass {
+    min-height: 100px;
+    resize: vertical;
   }
 }
 
@@ -143,8 +179,75 @@
   background: var(--aegis-bg-elevated);
 }
 
+/* Thin scrollbar utility */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(139, 148, 158, 0.3);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 148, 158, 0.5);
+}
+
 /* Selection */
 ::selection {
   background: var(--aegis-accent-teal);
   color: var(--aegis-bg-deep);
+}
+
+/* Fix for navigation links */
+nav a,
+nav button {
+  color: #FFFFFF !important;
+}
+
+nav a:hover,
+nav button:hover {
+  color: var(--aegis-accent-teal) !important;
+}
+
+nav a.active {
+  color: var(--aegis-bg-deep) !important;
+}
+
+/* Ensure all icons are white by default */
+svg {
+  color: inherit;
+}
+
+/* Fix layout issues */
+html,
+body {
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+main {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Smooth transitions everywhere */
+* {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus visible for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--aegis-accent-teal);
+  outline-offset: 2px;
+}
+
+/* Disabled states */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

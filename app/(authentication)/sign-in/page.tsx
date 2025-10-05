@@ -76,14 +76,14 @@ export default function SignInPage() {
           </div>
         </div>
 
-        <h1 className="text-3xl font-bold text-center mb-2">Welcome Back</h1>
+        <h1 className="text-3xl font-bold text-center mb-2 text-white">Welcome Back</h1>
         <p className="text-center text-[var(--aegis-text-muted)] mb-8">
           Sign in to access your Aegis Vault
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium mb-2 text-[var(--aegis-text-body)]">
+            <label className="block text-sm font-medium mb-2 text-white">
               Email or Username
             </label>
             <input
@@ -98,7 +98,7 @@ export default function SignInPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-[var(--aegis-text-body)]">
+            <label className="block text-sm font-medium mb-2 text-white">
               Password
             </label>
             <input

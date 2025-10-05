@@ -1,12 +1,12 @@
 "use client";
 
 import { AegisLayout } from "@/components/aegis-layout";
-import { VaultCard } from "@/components/vault-card";
+import { PasswordAccordionCard } from "@/components/password-accordion-card";
 import { AddPasswordModal } from "@/components/add-password-modal";
 import { ManageCategoriesModal } from "@/components/manage-categories-modal";
 import { motion } from "framer-motion";
 import { Plus, Search, FolderCog } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { usePassphrase } from "@/providers/passphrase-provider";
 import { decryptSecret } from "@/lib/crypto";
@@ -17,6 +17,7 @@ type VaultItem = {
   username?: string;
   email?: string;
   url?: string;
+  notes?: string;
   category: { id: string; name: string; slug: string };
   passwordCiphertext: string;
   passwordNonce: string;
@@ -25,7 +26,7 @@ type VaultItem = {
 
 export default function VaultPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
   const { getKeyForSalt } = usePassphrase();
@@ -67,23 +68,62 @@ export default function VaultPage() {
     return decrypted;
   };
 
+  // Group passwords by category
+  const groupedPasswords = useMemo(() => {
+    if (!data) return {};
+    
+    const groups: Record<string, VaultItem[]> = {};
+    data.forEach((item) => {
+      const categoryName = item.category.name;
+      if (!groups[categoryName]) {
+        groups[categoryName] = [];
+      }
+      groups[categoryName].push(item);
+    });
+    
+    return groups;
+  }, [data]);
+
+  const categoryKeys = Object.keys(groupedPasswords);
+
   const container = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
+        staggerChildren: 0.08,
+        delayChildren: 0.1,
       },
     },
   };
 
+  const categoryContainer = {
+    hidden: { opacity: 0, y: 20 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        ease: "easeInOut",
+        staggerChildren: 0.06,
+      },
+    },
+  };
+
+  const handleCategoryFilter = (categorySlug: string | null) => {
+    setSelectedCategory(categorySlug);
+  };
+
   return (
-    <AegisLayout>
+    <AegisLayout 
+      onCategoryFilter={handleCategoryFilter}
+      selectedCategory={selectedCategory}
+    >
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
         className="mb-8"
       >
         <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-[var(--aegis-text-heading)] to-[var(--aegis-accent-teal)] bg-clip-text text-transparent">
@@ -98,7 +138,7 @@ export default function VaultPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
+        transition={{ duration: 0.4, delay: 0.1, ease: "easeInOut" }}
         className="glass-card p-4 mb-8 flex flex-col md:flex-row gap-4"
       >
         {/* Search */}
@@ -112,20 +152,6 @@ export default function VaultPage() {
             className="input-glass pl-12"
           />
         </div>
-
-        {/* Category Filter */}
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="input-glass md:w-64"
-        >
-          <option value="">All Categories</option>
-          {categories?.map((cat) => (
-            <option key={cat.id} value={cat.slug}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
 
         {/* Add New Button */}
         <motion.button
@@ -143,14 +169,14 @@ export default function VaultPage() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setIsCategoriesModalOpen(true)}
-          className="px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center gap-2 whitespace-nowrap transition-colors"
+          className="px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center gap-2 whitespace-nowrap transition-colors duration-300"
           title="Manage Categories"
         >
-          <FolderCog className="w-5 h-5" />
+          <FolderCog className="w-5 h-5 text-white" />
         </motion.button>
       </motion.div>
 
-      {/* Vault Grid */}
+      {/* Vault Content */}
       {isLoading ? (
         <div className="text-center text-[var(--aegis-text-muted)] py-20">
           Loading vault...
@@ -159,14 +185,14 @@ export default function VaultPage() {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
           className="text-center py-20"
         >
           <div className="glass-card-elevated p-12 max-w-md mx-auto">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--aegis-accent-teal)] to-[var(--aegis-accent-blue)] flex items-center justify-center mx-auto mb-6">
               <Plus className="w-10 h-10 text-[var(--aegis-bg-deep)]" />
             </div>
-            <h3 className="text-2xl font-semibold mb-2">Your vault is empty</h3>
+            <h3 className="text-2xl font-semibold mb-2 text-white">Your vault is empty</h3>
             <p className="text-[var(--aegis-text-muted)] mb-6">
               Start by adding your first password
             </p>
@@ -180,16 +206,41 @@ export default function VaultPage() {
           variants={container}
           initial="hidden"
           animate="show"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          className="space-y-10"
         >
-          {data.map((item) => (
-            <VaultCard
-              key={item.id}
-              {...item}
-              onEdit={() => {}}
-              onDelete={() => {}}
-              onDecryptPassword={() => handleDecryptPassword(item)}
-            />
+          {categoryKeys.map((categoryName) => (
+            <motion.div
+              key={categoryName}
+              variants={categoryContainer}
+              className="space-y-4"
+            >
+              {/* Category Header */}
+              <motion.div
+                className="flex items-center gap-3"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+              >
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[var(--aegis-border)] to-transparent" />
+                <h2 className="text-2xl font-bold text-white">
+                  {categoryName}
+                </h2>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[var(--aegis-border)] to-transparent" />
+              </motion.div>
+
+              {/* Password Cards for this Category */}
+              <div className="space-y-3">
+                {groupedPasswords[categoryName].map((item) => (
+                  <PasswordAccordionCard
+                    key={item.id}
+                    {...item}
+                    onEdit={() => {}}
+                    onDelete={() => {}}
+                    onDecryptPassword={() => handleDecryptPassword(item)}
+                  />
+                ))}
+              </div>
+            </motion.div>
           ))}
         </motion.div>
       )}

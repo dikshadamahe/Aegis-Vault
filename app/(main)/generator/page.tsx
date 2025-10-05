@@ -55,7 +55,7 @@ export default function GeneratorPage() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
         className="mb-8"
       >
         <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-[var(--aegis-text-heading)] to-[var(--aegis-accent-blue)] bg-clip-text text-transparent">
@@ -71,11 +71,11 @@ export default function GeneratorPage() {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
           className="glass-card-elevated p-8 mb-8"
         >
           <div className="flex items-center gap-4">
-            <div className="flex-1 font-mono text-2xl text-[var(--aegis-text-heading)] break-all">
+            <div className="flex-1 font-mono text-2xl text-white break-all">
               {password || "Click generate to create a password"}
             </div>
             {password && (
@@ -83,7 +83,7 @@ export default function GeneratorPage() {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleCopy}
-                className="w-12 h-12 rounded-lg bg-[var(--aegis-accent-teal)] flex items-center justify-center text-[var(--aegis-bg-deep)] hover:shadow-[0_0_20px_rgba(0,191,165,0.4)] transition-all"
+                className="w-12 h-12 rounded-lg bg-[var(--aegis-accent-teal)] flex items-center justify-center text-[var(--aegis-bg-deep)] hover:shadow-[0_0_20px_rgba(0,191,165,0.4)] transition-all duration-300"
               >
                 {copied ? <Check className="w-6 h-6" /> : <Copy className="w-6 h-6" />}
               </motion.button>
@@ -95,13 +95,13 @@ export default function GeneratorPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
+          transition={{ duration: 0.4, delay: 0.1, ease: "easeInOut" }}
           className="glass-card p-8 space-y-6"
         >
           {/* Length Slider */}
           <div>
             <div className="flex justify-between mb-3">
-              <label className="text-sm font-medium text-[var(--aegis-text-body)]">
+              <label className="text-sm font-medium text-white">
                 Length
               </label>
               <span className="text-sm font-mono text-[var(--aegis-accent-teal)]">
@@ -132,7 +132,7 @@ export default function GeneratorPage() {
               >
                 <div
                   onClick={() => option.setter(!option.value)}
-                  className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                  className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-300 ${
                     option.value
                       ? "bg-[var(--aegis-accent-teal)] border-[var(--aegis-accent-teal)]"
                       : "border-[var(--aegis-border)] group-hover:border-[var(--aegis-border-hover)]"
@@ -140,7 +140,7 @@ export default function GeneratorPage() {
                 >
                   {option.value && <Check className="w-4 h-4 text-[var(--aegis-bg-deep)]" />}
                 </div>
-                <span className="text-[var(--aegis-text-body)] group-hover:text-[var(--aegis-text-heading)] transition-colors">
+                <span className="text-white group-hover:text-[var(--aegis-accent-teal)] transition-colors duration-300">
                   {option.label}
                 </span>
               </label>

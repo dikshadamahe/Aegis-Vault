@@ -9,7 +9,7 @@ import { Plus, Search, FolderCog } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { usePassphrase } from "@/providers/passphrase-provider";
-import { decryptSecret } from "@/lib/crypto";
+import { decryptWithEnvelope } from "@/lib/crypto";
 
 type VaultItem = {
   id: string;
@@ -22,6 +22,12 @@ type VaultItem = {
   passwordCiphertext: string;
   passwordNonce: string;
   passwordSalt: string;
+  passwordEncryptedDek?: string;
+  passwordDekNonce?: string;
+  notesCiphertext?: string;
+  notesNonce?: string;
+  notesEncryptedDek?: string;
+  notesDekNonce?: string;
 };
 
 export default function VaultPage() {
@@ -59,14 +65,32 @@ export default function VaultPage() {
   const handleDecryptPassword = async (item: VaultItem) => {
     try {
       const key = await getKeyForSalt(item.passwordSalt);
-      const decrypted = await decryptSecret(
-        {
-          ciphertext: item.passwordCiphertext,
-          nonce: item.passwordNonce,
-        },
-        key
-      );
-      return decrypted;
+      
+      // Check if envelope encryption is used (new architecture)
+      if (item.passwordEncryptedDek && item.passwordDekNonce) {
+        // ENVELOPE DECRYPTION: New secure architecture
+        const decrypted = await decryptWithEnvelope(
+          {
+            ciphertext: item.passwordCiphertext,
+            nonce: item.passwordNonce,
+            encryptedDek: item.passwordEncryptedDek,
+            dekNonce: item.passwordDekNonce,
+          },
+          key
+        );
+        return decrypted;
+      } else {
+        // LEGACY DECRYPTION: Fallback for old data (will be migrated)
+        const { decryptSecret } = await import("@/lib/crypto");
+        const decrypted = await decryptSecret(
+          {
+            ciphertext: item.passwordCiphertext,
+            nonce: item.passwordNonce,
+          },
+          key
+        );
+        return decrypted;
+      }
     } catch (error) {
       console.error("Decryption failed for item:", item.id, error);
       throw new Error("Failed to decrypt password. Please check your passphrase.");

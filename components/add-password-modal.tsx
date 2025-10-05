@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Lock, Globe, User, Mail, FileText, Eye, EyeOff, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { usePassphrase } from "@/providers/passphrase-provider";
-import { encryptSecret } from "@/lib/crypto";
+import { encryptWithEnvelope } from "@/lib/crypto";
 import { toast } from "sonner";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { categoryIcon } from "@/constants/category-icon";
@@ -54,30 +54,36 @@ export function AddPasswordModal({ open, onClose }: AddPasswordModalProps) {
       const salt = genSalt();
       const saltB64 = u8ToBase64(salt);
 
-      // Derive key from user's passphrase
-      const key = await getKeyForSalt(salt);
+      // Derive MEK (Master Encryption Key) from user's passphrase
+      const mek = await getKeyForSalt(salt);
 
-      // Encrypt password
-      const passwordPayload = await encryptSecret(data.password, key);
+      // ENVELOPE ENCRYPTION: Encrypt password with DEK, then encrypt DEK with MEK
+      const passwordPayload = await encryptWithEnvelope(data.password, mek);
 
-      // Encrypt notes if provided
+      // Encrypt notes if provided (using envelope encryption)
       let notesPayload = null;
       if (data.notes.trim()) {
-        notesPayload = await encryptSecret(data.notes, key);
+        notesPayload = await encryptWithEnvelope(data.notes, mek);
       }
 
-      // Build API payload
+      // Build API payload with envelope encryption fields
       const payload = {
         websiteName: data.websiteName,
         username: data.username || undefined,
         email: data.email || undefined,
         url: data.url || undefined,
         category: data.categoryId,
+        // Password envelope encryption fields
         passwordCiphertext: passwordPayload.ciphertext,
         passwordNonce: passwordPayload.nonce,
+        passwordEncryptedDek: passwordPayload.encryptedDek,
+        passwordDekNonce: passwordPayload.dekNonce,
         passwordSalt: saltB64,
+        // Notes envelope encryption fields (if provided)
         notesCiphertext: notesPayload?.ciphertext,
         notesNonce: notesPayload?.nonce,
+        notesEncryptedDek: notesPayload?.encryptedDek,
+        notesDekNonce: notesPayload?.dekNonce,
       };
 
       const res = await fetch("/api/vault/items", {

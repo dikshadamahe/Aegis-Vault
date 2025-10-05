@@ -100,6 +100,11 @@ model Password {
   passwordSalt       String?
   notesCiphertext    String?
   notesNonce         String?
+  // Envelope Encryption fields (DEK encrypted with MEK)
+  passwordEncryptedDek String?  // DEK encrypted with user's MEK
+  passwordDekNonce     String?  // Nonce for DEK encryption
+  notesEncryptedDek    String?  // DEK encrypted with user's MEK for notes
+  notesDekNonce        String?  // Nonce for notes DEK encryption
   lastUsedAt         DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

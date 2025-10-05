@@ -19,15 +19,14 @@ export default withAuth(
   }
 );
 
-// Protect all routes in the (main) group: /vault, /dashboard, /generator, etc.
-// Exclude public routes: /sign-in, /sign-up, /, /api/auth/*
+// CRITICAL: Protect all routes in the (main) group
+// /vault, /dashboard, /generator must be protected
 export const config = {
   matcher: [
-    "/vault/:path*",
-    "/dashboard/:path*", 
+    "/vault/:path*",      // CRITICAL: Now protected
+    "/dashboard/:path*",
     "/generator/:path*",
     "/profile/:path*",
     "/settings/:path*",
-    // Add any other protected routes from (main) group
   ],
 };

@@ -110,3 +110,63 @@ export async function decryptSecret(payload: CipherPayload, key: Uint8Array): Pr
   const msg = sodium.crypto_secretbox_open_easy(cipher, nonce, key);
   return new TextDecoder().decode(msg);
 }
+
+// ===== ENVELOPE ENCRYPTION: DEK + MEK Architecture =====
+
+type EnvelopePayload = {
+  ciphertext: string;     // data encrypted with DEK (base64)
+  nonce: string;          // nonce for data encryption (base64)
+  encryptedDek: string;   // DEK encrypted with MEK (base64)
+  dekNonce: string;       // nonce for DEK encryption (base64)
+};
+
+/**
+ * Encrypts data using Envelope Encryption:
+ * 1. Generate random DEK (Data Encryption Key)
+ * 2. Encrypt plaintext with DEK
+ * 3. Encrypt DEK with MEK (Master Encryption Key)
+ * 4. Return both encrypted data and encrypted DEK
+ */
+export async function encryptWithEnvelope(plaintext: string, mek: Uint8Array): Promise<EnvelopePayload> {
+  await initCrypto();
+  
+  // Step 1: Generate random DEK for this specific data
+  const dek = sodium.randombytes_buf(sodium.crypto_secretbox_KEYBYTES);
+  
+  // Step 2: Encrypt plaintext with DEK
+  const dataNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
+  const msg = new TextEncoder().encode(plaintext);
+  const dataCipher = sodium.crypto_secretbox_easy(msg, dataNonce, dek);
+  
+  // Step 3: Encrypt DEK with MEK
+  const dekNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
+  const encryptedDek = sodium.crypto_secretbox_easy(dek, dekNonce, mek);
+  
+  return {
+    ciphertext: toBase64(dataCipher),
+    nonce: toBase64(dataNonce),
+    encryptedDek: toBase64(encryptedDek),
+    dekNonce: toBase64(dekNonce),
+  };
+}
+
+/**
+ * Decrypts data using Envelope Encryption:
+ * 1. Decrypt DEK using MEK
+ * 2. Decrypt data using decrypted DEK
+ */
+export async function decryptWithEnvelope(payload: EnvelopePayload, mek: Uint8Array): Promise<string> {
+  await initCrypto();
+  
+  // Step 1: Decrypt DEK using MEK
+  const encryptedDekBytes = fromBase64(payload.encryptedDek);
+  const dekNonce = fromBase64(payload.dekNonce);
+  const dek = sodium.crypto_secretbox_open_easy(encryptedDekBytes, dekNonce, mek);
+  
+  // Step 2: Decrypt data using DEK
+  const dataCipher = fromBase64(payload.ciphertext);
+  const dataNonce = fromBase64(payload.nonce);
+  const msg = sodium.crypto_secretbox_open_easy(dataCipher, dataNonce, dek);
+  
+  return new TextDecoder().decode(msg);
+}

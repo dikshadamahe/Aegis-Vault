@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/prisma/db";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { z } from "zod";
 
 const registerSchema = z.object({
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
 
   const salt = await bcrypt.genSalt();
   const hashedPassword = await bcrypt.hash(password, salt);
-  const created = await prisma.user.create({ data: { email, name: username, hashedPassword } });
+  const encryptionSalt = Buffer.from(crypto.randomBytes(16)).toString("base64");
+  const created = await prisma.user.create({ data: { email, name: username, hashedPassword, encryptionSalt } });
   return NextResponse.json({ ok: true, userId: created.id });
 }

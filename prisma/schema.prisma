@@ -46,6 +46,8 @@ model User {
   email              String?    @unique
   emailVerified      DateTime?
   hashedPassword     String?
+  // Per-user salt for deriving encryption keys; base64 string
+  encryptionSalt     String?
   image              String?
   encryptionPublicKey String? // reserved for future sharing features
   accounts           Account[]

@@ -4,11 +4,11 @@ Password Manager built with Next.js and shadcn/ui.
 
 ## Tech Stack
 
-- Next.JS with server action
-- Prisma ORM
+- Next.js (App Router)
+- Prisma ORM (MongoDB provider)
 - Tailwind CSS
 - shadcn/ui
-- neon postgres
+- MongoDB (Atlas or local)
 
 ## Resources
 
@@ -23,6 +23,30 @@ Password Manager built with Next.js and shadcn/ui.
 - password: "susan123"
 
 ## Getting Started
+
+### Environment
+
+Create a `.env` file with:
+
+```
+MONGODB_URI="mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/vaultmvp?retryWrites=true&w=majority"
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=<generate-a-secret>
+```
+
+Note: Prisma with MongoDB requires a database name in the URI path (e.g. `/vaultmvp`). If your environment has DNS/egress restrictions with SRV, use the "Standard connection string" (non-SRV) from Atlas or a local MongoDB instance.
+
+### Prisma (MongoDB)
+
+Prisma migrations are not supported for MongoDB. Use `generate` and (optionally) `db push`:
+
+```
+npm run prisma:generate
+# optionally sync schema metadata for tooling
+npm run prisma:sync
+```
+
+### Run the app
 
 First, run the development server:
 

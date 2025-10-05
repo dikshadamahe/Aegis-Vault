@@ -41,14 +41,15 @@ const authOptions: NextAuthOptions = {
           );
         }
 
+        const lookup = credentials.emailOrUsername.trim().toLowerCase();
         const user = await prisma.user.findFirst({
           where: {
             OR: [
               {
-                name: credentials.emailOrUsername,
+                name: lookup,
               },
               {
-                email: credentials.emailOrUsername,
+                email: lookup,
               },
             ],
           },
@@ -71,6 +72,33 @@ const authOptions: NextAuthOptions = {
   ],
   pages: {
     signIn: "/sign-in",
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      // First time jwt callback is run, user object is available
+      if (user) {
+        // @ts-expect-error augment
+        token.userId = (user as any).id;
+        // @ts-expect-error augment
+        token.encryptionSalt = (user as any).encryptionSalt ?? null;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        // @ts-expect-error augment
+        session.user.id = (token as any).userId;
+        // @ts-expect-error augment
+        (session as any).encryptionSalt = (token as any).encryptionSalt ?? null;
+      }
+      return session;
+    },
+    async redirect({ url, baseUrl }) {
+      // enforce dashboard after sign-in when coming from our app
+      if (url.startsWith(baseUrl)) return `${baseUrl}/dashboard`;
+      if (url.startsWith("/")) return `${baseUrl}/dashboard`;
+      return `${baseUrl}/dashboard`;
+    },
   },
   session: {
     strategy: "jwt",

@@ -43,7 +43,8 @@ export async function POST(req: Request) {
   if (!user) {
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(defaultPassword, salt);
-    user = await prisma.user.create({ data: { email, name: defaultUsername, hashedPassword } });
+    const encryptionSalt = Buffer.from(crypto.randomBytes(16)).toString("base64");
+    user = await prisma.user.create({ data: { email, name: defaultUsername, hashedPassword, encryptionSalt } });
   }
 
   // ensure categories

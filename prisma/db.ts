@@ -29,6 +29,36 @@ import { PrismaClient } from "@prisma/client";
   }
 })();
 
+// Optional embedded MongoDB for local/dev and CI e2e
+// If enabled and the configured URI is missing or uses SRV, spin up an in-memory Mongo
+// to avoid external DNS/egress issues.
+if (
+  process.env.NODE_ENV !== "production" &&
+  (process.env.ENABLE_EMBEDDED_MONGO === "true" || process.env.ENABLE_EMBEDDED_MONGO === "1")
+) {
+  const current = process.env.MONGODB_URI || "";
+  const shouldStartEmbedded = !current || /^mongodb\+srv:\/\//i.test(current);
+  if (shouldStartEmbedded) {
+    // Lazy init to avoid import cost during build
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    (async () => {
+      try {
+        const { MongoMemoryServer } = await import("mongodb-memory-server");
+        const mongod = await MongoMemoryServer.create();
+        // Provide a stable db name in the URI path
+        const uri = new URL(mongod.getUri());
+        if (!uri.pathname || uri.pathname === "/") uri.pathname = "/vaultmvp";
+        process.env.MONGODB_URI = uri.toString();
+        // eslint-disable-next-line no-console
+        console.warn("[prisma] Using embedded MongoDB for development:", process.env.MONGODB_URI);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("[prisma] Failed to start embedded MongoDB:", err);
+      }
+    })();
+  }
+}
+
 const prismaClientSingleton = () => {
   return new PrismaClient();
 };

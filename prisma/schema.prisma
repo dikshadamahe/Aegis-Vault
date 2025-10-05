@@ -101,7 +101,7 @@ model Password {
   notesCiphertext    String?
   notesNonce         String?
   // Envelope Encryption fields (DEK encrypted with MEK)
-  passwordEncryptedDek String?  // DEK encrypted with user's MEK
+  passwordEncryptedDek String?  // DEK encrypted with user's MEK (optional for backward compatibility)
   passwordDekNonce     String?  // Nonce for DEK encryption
   notesEncryptedDek    String?  // DEK encrypted with user's MEK for notes
   notesDekNonce        String?  // Nonce for notes DEK encryption

@@ -4,14 +4,15 @@ import authOptions from "@/lib/auth-options";
 import prisma from "@/prisma/db";
 
 const DEFAULT_CATEGORIES = [
-  { name: "Social Media", slug: "social-media" },
-  { name: "Email", slug: "email" },
-  { name: "Banking", slug: "banking" },
-  { name: "Shopping", slug: "shopping" },
-  { name: "Entertainment", slug: "entertainment" },
-  { name: "Work", slug: "work" },
-  { name: "Development", slug: "development" },
-  { name: "Other", slug: "other" },
+  { name: "Web Logins", slug: "web-logins" },
+  { name: "Bank Accounts", slug: "bank-accounts" },
+  { name: "Credit Cards", slug: "credit-cards" },
+  { name: "Email Accounts", slug: "email-accounts" },
+  { name: "Social Media Accounts", slug: "social-media-accounts" },
+  { name: "Identity Documents", slug: "identity-documents" },
+  { name: "Wifi Passwords", slug: "wifi-passwords" },
+  { name: "Notes", slug: "notes" },
+  { name: "Others", slug: "others" },
 ];
 
 export async function POST() {

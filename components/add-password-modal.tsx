@@ -1,12 +1,13 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Lock, Globe, User, Mail, FileText, Folder } from "lucide-react";
+import { X, Lock, Globe, User, Mail, FileText, Eye, EyeOff, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { usePassphrase } from "@/providers/passphrase-provider";
 import { encryptSecret } from "@/lib/crypto";
 import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { categoryIcon } from "@/constants/category-icon";
 
 type Category = {
   id: string;
@@ -17,10 +18,9 @@ type Category = {
 type AddPasswordModalProps = {
   open: boolean;
   onClose: () => void;
-  categories: Category[];
 };
 
-export function AddPasswordModal({ open, onClose, categories }: AddPasswordModalProps) {
+export function AddPasswordModal({ open, onClose }: AddPasswordModalProps) {
   const [formData, setFormData] = useState({
     websiteName: "",
     username: "",
@@ -31,8 +31,22 @@ export function AddPasswordModal({ open, onClose, categories }: AddPasswordModal
     categoryId: "",
   });
 
+  const [showPassword, setShowPassword] = useState(false);
+
   const { getKeyForSalt, genSalt } = usePassphrase();
   const queryClient = useQueryClient();
+
+  // Fetch categories directly in the modal
+  const { data: categories, isLoading: categoriesLoading } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const res = await fetch("/api/vault/categories");
+      if (!res.ok) throw new Error("Failed to fetch categories");
+      const json = await res.json();
+      return json.categories as Category[];
+    },
+    enabled: open, // Only fetch when modal is open
+  });
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -172,142 +186,171 @@ export function AddPasswordModal({ open, onClose, categories }: AddPasswordModal
               </div>
 
               {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Title */}
-                <div>
-                  <label className="block text-sm font-medium text-[var(--aegis-text-body)] mb-2">
-                    Title <span className="text-[var(--aegis-accent-teal)]">*</span>
-                  </label>
-                  <div className="relative">
-                    <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)]" />
-                    <input
-                      type="text"
-                      value={formData.websiteName}
-                      onChange={(e) => setFormData({ ...formData, websiteName: e.target.value })}
-                      placeholder="e.g., GitHub, Gmail, Netflix"
-                      className="input-glass pl-12"
-                      required
-                    />
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Title & Category - Side by Side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm font-semibold text-[var(--aegis-text-body)] mb-2">
+                      Title <span className="text-[var(--aegis-accent-teal)]">*</span>
+                    </label>
+                    <div className="relative group">
+                      <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)] group-focus-within:text-[var(--aegis-accent-teal)] transition-colors" />
+                      <input
+                        type="text"
+                        value={formData.websiteName}
+                        onChange={(e) => setFormData({ ...formData, websiteName: e.target.value })}
+                        placeholder="e.g., GitHub, Gmail, Netflix"
+                        className="input-glass pl-12 w-full"
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* Category */}
-                <div>
-                  <label className="block text-sm font-medium text-[var(--aegis-text-body)] mb-2">
-                    Category <span className="text-[var(--aegis-accent-teal)]">*</span>
-                  </label>
-                  <div className="relative">
-                    <Folder className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)]" />
-                    <select
-                      value={formData.categoryId}
-                      onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                      className="input-glass pl-12"
-                      required
-                    >
-                      <option value="">Select a category</option>
-                      {categories?.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
+                  {/* Category */}
+                  <div>
+                    <label className="block text-sm font-semibold text-[var(--aegis-text-body)] mb-2">
+                      Category <span className="text-[var(--aegis-accent-teal)]">*</span>
+                    </label>
+                    <div className="relative group">
+                      <select
+                        value={formData.categoryId}
+                        onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                        className="input-glass pl-4 w-full appearance-none cursor-pointer"
+                        required
+                        disabled={categoriesLoading}
+                      >
+                        <option value="">
+                          {categoriesLoading ? "Loading categories..." : "Select a category"}
                         </option>
-                      ))}
-                    </select>
+                        {categories?.map((cat) => {
+                          const Icon = categoryIcon[cat.slug];
+                          return (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      {/* Custom dropdown icon */}
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg className="w-4 h-4 text-[var(--aegis-text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                    {categories && categories.length === 0 && (
+                      <p className="text-xs text-[var(--aegis-text-muted)] mt-1">
+                        No categories yet. Create one in the category manager.
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {/* Username and Email (side by side) */}
+                {/* Username & Email - Side by Side */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-[var(--aegis-text-body)] mb-2">
+                    <label className="block text-sm font-semibold text-[var(--aegis-text-body)] mb-2">
                       Username
                     </label>
-                    <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)]" />
+                    <div className="relative group">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)] group-focus-within:text-[var(--aegis-accent-teal)] transition-colors" />
                       <input
                         type="text"
                         value={formData.username}
                         onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                         placeholder="username"
-                        className="input-glass pl-12"
+                        className="input-glass pl-12 w-full"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[var(--aegis-text-body)] mb-2">
+                    <label className="block text-sm font-semibold text-[var(--aegis-text-body)] mb-2">
                       Email
                     </label>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)]" />
+                    <div className="relative group">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)] group-focus-within:text-[var(--aegis-accent-teal)] transition-colors" />
                       <input
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         placeholder="email@example.com"
-                        className="input-glass pl-12"
+                        className="input-glass pl-12 w-full"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Password */}
-                <div>
-                  <label className="block text-sm font-medium text-[var(--aegis-text-body)] mb-2">
-                    Password <span className="text-[var(--aegis-accent-teal)]">*</span>
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)]" />
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Enter password"
-                      className="input-glass pl-12"
-                      required
-                    />
+                {/* Password & URL - Side by Side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Password */}
+                  <div>
+                    <label className="block text-sm font-semibold text-[var(--aegis-text-body)] mb-2">
+                      Password <span className="text-[var(--aegis-accent-teal)]">*</span>
+                    </label>
+                    <div className="relative group">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)] group-focus-within:text-[var(--aegis-accent-teal)] transition-colors" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Enter password"
+                        className="input-glass pl-12 pr-12 w-full"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--aegis-text-muted)] hover:text-[var(--aegis-accent-teal)] transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Website URL */}
+                  <div>
+                    <label className="block text-sm font-semibold text-[var(--aegis-text-body)] mb-2">
+                      Website URL
+                    </label>
+                    <div className="relative group">
+                      <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)] group-focus-within:text-[var(--aegis-accent-teal)] transition-colors" />
+                      <input
+                        type="url"
+                        value={formData.url}
+                        onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                        placeholder="https://example.com"
+                        className="input-glass pl-12 w-full"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* URL */}
+                {/* Notes - Full Width */}
                 <div>
-                  <label className="block text-sm font-medium text-[var(--aegis-text-body)] mb-2">
-                    Website URL
-                  </label>
-                  <div className="relative">
-                    <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)]" />
-                    <input
-                      type="url"
-                      value={formData.url}
-                      onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                      placeholder="https://example.com"
-                      className="input-glass pl-12"
-                    />
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-sm font-medium text-[var(--aegis-text-body)] mb-2">
+                  <label className="block text-sm font-semibold text-[var(--aegis-text-body)] mb-2">
                     Notes
                   </label>
-                  <div className="relative">
-                    <FileText className="absolute left-4 top-4 w-5 h-5 text-[var(--aegis-text-muted)]" />
+                  <div className="relative group">
+                    <FileText className="absolute left-4 top-4 w-5 h-5 text-[var(--aegis-text-muted)] group-focus-within:text-[var(--aegis-accent-teal)] transition-colors" />
                     <textarea
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      placeholder="Add any additional notes..."
+                      placeholder="Add any additional notes (optional)"
                       rows={4}
-                      className="input-glass pl-12 resize-none"
+                      className="input-glass pl-12 resize-none w-full"
                     />
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-3 pt-2 border-t border-white/10">
                   <motion.button
                     type="button"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleClose}
-                    className="flex-1 px-6 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-[var(--aegis-text-body)] font-medium transition-colors"
+                    className="flex-1 px-6 py-3.5 rounded-lg bg-white/5 hover:bg-white/10 text-[var(--aegis-text-body)] font-semibold transition-colors"
                   >
                     Cancel
                   </motion.button>
@@ -316,9 +359,24 @@ export function AddPasswordModal({ open, onClose, categories }: AddPasswordModal
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     disabled={createMutation.isPending}
-                    className="flex-1 btn-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 btn-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 py-3.5"
                   >
-                    {createMutation.isPending ? "Adding..." : "Add Password"}
+                    {createMutation.isPending ? (
+                      <>
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        >
+                          <Sparkles className="w-5 h-5" />
+                        </motion.div>
+                        <span>Encrypting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-5 h-5" />
+                        <span>Add Password</span>
+                      </>
+                    )}
                   </motion.button>
                 </div>
               </form>

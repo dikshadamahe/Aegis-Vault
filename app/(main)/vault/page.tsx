@@ -198,7 +198,6 @@ export default function VaultPage() {
       <AddPasswordModal
         open={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        categories={categories || []}
       />
 
       {/* Manage Categories Modal */}

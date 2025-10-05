@@ -5,10 +5,11 @@ import {
   Globe,
   LucideIcon,
   Mail,
-  School,
-  Shell,
+  Building2,
+  Shield,
   UserCircle2,
   Wifi,
+  FolderOpen,
 } from "lucide-react";
 
 interface CategoryIcon {
@@ -17,12 +18,12 @@ interface CategoryIcon {
 
 export const categoryIcon: CategoryIcon = {
   "web-logins": Globe,
+  "bank-accounts": Building2,
   "credit-cards": CreditCard,
-  "identity-documents": UserCircle2,
-  notes: FileText,
-  "social-media-accounts": AtSign,
   "email-accounts": Mail,
+  "social-media-accounts": AtSign,
+  "identity-documents": Shield,
   "wifi-passwords": Wifi,
-  "bank-accounts": School,
-  others: Shell,
+  notes: FileText,
+  others: FolderOpen,
 };

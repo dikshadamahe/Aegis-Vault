@@ -5,6 +5,7 @@ import { Plus, Trash2, FolderPlus, X } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { categoryIcon } from "@/constants/category-icon";
 
 type Category = {
   id: string;
@@ -207,32 +208,42 @@ export function ManageCategoriesModal({ open, onClose }: ManageCategoriesModalPr
                     </motion.button>
                   </div>
                 ) : (
-                  categories.map((category) => (
-                    <motion.div
-                      key={category.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="glass-card p-4 flex items-center justify-between group"
-                    >
-                      <div>
-                        <h3 className="text-lg font-medium text-[var(--aegis-text-heading)]">
-                          {category.name}
-                        </h3>
-                        <p className="text-sm text-[var(--aegis-text-muted)]">
-                          {category.slug}
-                        </p>
-                      </div>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleDeleteCategory(category.id, category.name)}
-                        disabled={deleteMutation.isPending}
-                        className="w-10 h-10 rounded-lg bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                  categories.map((category) => {
+                    const Icon = categoryIcon[category.slug];
+                    return (
+                      <motion.div
+                        key={category.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="glass-card p-4 flex items-center justify-between group"
                       >
-                        <Trash2 className="w-5 h-5 text-red-400" />
-                      </motion.button>
-                    </motion.div>
-                  ))
+                        <div className="flex items-center gap-3">
+                          {Icon && (
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--aegis-accent-teal)]/20 to-[var(--aegis-accent-blue)]/20 flex items-center justify-center">
+                              <Icon className="w-5 h-5 text-[var(--aegis-accent-teal)]" />
+                            </div>
+                          )}
+                          <div>
+                            <h3 className="text-lg font-medium text-[var(--aegis-text-heading)]">
+                              {category.name}
+                            </h3>
+                            <p className="text-sm text-[var(--aegis-text-muted)]">
+                              {category.slug}
+                            </p>
+                          </div>
+                        </div>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleDeleteCategory(category.id, category.name)}
+                          disabled={deleteMutation.isPending}
+                          className="w-10 h-10 rounded-lg bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                        >
+                          <Trash2 className="w-5 h-5 text-red-400" />
+                        </motion.button>
+                      </motion.div>
+                    );
+                  })
                 )}
               </div>
 

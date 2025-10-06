@@ -76,7 +76,7 @@ export default function VaultPage() {
       const res = await fetch("/api/vault/categories");
       if (!res.ok) throw new Error("Failed to fetch categories");
       const json = await res.json();
-      return json.categories as Array<{ id: string; name: string }>;
+      return json.categories as Array<{ id: string; name: string; slug: string }>;
     },
   });
 
@@ -182,7 +182,7 @@ export default function VaultPage() {
         >
           <AnimatePresence mode="popLayout">
             {filteredItems.map((item) => (
-              <PasswordCard key={item.id} item={item} />
+              <PasswordCard key={item.id} item={item} categories={categories ?? []} />
             ))}
           </AnimatePresence>
         </motion.div>

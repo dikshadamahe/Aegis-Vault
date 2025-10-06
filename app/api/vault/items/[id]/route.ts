@@ -91,23 +91,31 @@ export async function PATCH(req: Request, { params }: Params) {
   if (!existing) return NextResponse.json({ error: "Not Found" }, { status: 404 });
 
   // Ensure target category belongs to the same user
-  const targetCategory = await prisma.category.findFirst({ where: { id: data.category, userId: resolvedUserId }, select: { id: true } });
-  if (!targetCategory) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+  let categoryId: string | null = null;
+  if (data.categoryId) {
+    const targetCategory = await prisma.category.findFirst({ where: { id: data.categoryId, userId: resolvedUserId }, select: { id: true, slug: true } });
+    if (!targetCategory) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+    categoryId = targetCategory.id;
+  }
 
   const updated = await prisma.password.update({
     where: { id: existing.id },
     data: {
-      categoryId: targetCategory.id,
-      websiteName: data.websiteName.toLowerCase(),
-      email: data.email ? data.email.toLowerCase() : undefined,
-      username: data.username ? data.username.toLowerCase() : undefined,
-      url: data.url ? data.url.toLowerCase() : undefined,
+      categoryId,
+      websiteName: data.websiteName,
+      email: data.email || undefined,
+      username: data.username || undefined,
+      url: data.url || undefined,
       password: "",
       passwordCiphertext: data.passwordCiphertext,
       passwordNonce: data.passwordNonce,
-      passwordSalt: data.passwordSalt, // new salt per update
-      notesCiphertext: data.notesCiphertext || undefined,
-      notesNonce: data.notesNonce || undefined,
+      passwordEncryptedDek: data.passwordEncryptedDek,
+      passwordDekNonce: data.passwordDekNonce,
+      passwordSalt: data.passwordSalt || undefined,
+      notesCiphertext: data.notesCiphertext ?? null,
+      notesNonce: data.notesNonce ?? null,
+      notesEncryptedDek: data.notesEncryptedDek ?? null,
+      notesDekNonce: data.notesDekNonce ?? null,
     },
     select: {
       id: true,
@@ -117,9 +125,13 @@ export async function PATCH(req: Request, { params }: Params) {
       url: true,
       passwordCiphertext: true,
       passwordNonce: true,
+      passwordEncryptedDek: true,
+      passwordDekNonce: true,
       passwordSalt: true,
       notesCiphertext: true,
       notesNonce: true,
+      notesEncryptedDek: true,
+      notesDekNonce: true,
       createdAt: true,
       updatedAt: true,
       category: { select: { id: true, name: true, slug: true } },

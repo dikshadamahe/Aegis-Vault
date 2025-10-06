@@ -27,7 +27,7 @@ type PasswordFormData = z.infer<typeof passwordSchema>;
 type AddPasswordModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  categories?: Array<{ id: string; name: string }>;
+  categories?: Array<{ id: string; name: string; slug?: string }>;
 };
 
 export function AddPasswordModal({ isOpen, onClose, categories: categoriesProp = [] }: AddPasswordModalProps) {
@@ -45,7 +45,7 @@ export function AddPasswordModal({ isOpen, onClose, categories: categoriesProp =
       const res = await fetch("/api/vault/categories");
       if (!res.ok) throw new Error("Failed to fetch categories");
       const json = await res.json();
-      return json.categories as Array<{ id: string; name: string }>;
+      return json.categories as Array<{ id: string; name: string; slug: string }>;
     },
     staleTime: 1000 * 30,
     enabled: shouldFetchCategories,

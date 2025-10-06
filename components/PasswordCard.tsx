@@ -1,13 +1,14 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Copy, ExternalLink, Lock } from "lucide-react";
-import { useState } from "react";
+import { Eye, EyeOff, Copy, ExternalLink, Lock, PencilLine } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Favicon } from "./ui/Favicon";
 import AccountPasswordModal from "./account-password-modal";
 import { decryptWithEnvelope, decryptSecret } from "@/lib/crypto";
 import { toast } from "sonner";
 import { categoryIcon } from "@/constants/category-icon";
+import { EditPasswordModal } from "./EditPasswordModal";
 
 type PasswordCardProps = {
   item: {
@@ -18,8 +19,8 @@ type PasswordCardProps = {
     url?: string;
     passwordCiphertext: string;
     passwordNonce: string;
-    passwordEncryptedDek?: string;
-    passwordDekNonce?: string;
+  passwordEncryptedDek?: string | null;
+  passwordDekNonce?: string | null;
     notesCiphertext?: string | null;
     notesNonce?: string | null;
     notesEncryptedDek?: string | null;
@@ -30,22 +31,47 @@ type PasswordCardProps = {
       slug: string;
     } | null;
   };
+  categories?: Array<{ id: string; name: string; slug?: string }>;
 };
 
-export function PasswordCard({ item }: PasswordCardProps) {
+export function PasswordCard({ item, categories = [] }: PasswordCardProps) {
+  const [localItem, setLocalItem] = useState(item);
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [decrypted, setDecrypted] = useState<string | null>(null);
   const [decryptedNotes, setDecryptedNotes] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isDecrypting, setIsDecrypting] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"view" | "edit" | null>(null);
+  const masterKeyRef = useRef<Uint8Array | null>(null);
 
-  const normalizedUrl = normalizeUrl(item.url);
-  const categorySlug = item.category?.slug;
+  useEffect(() => {
+    setLocalItem(item);
+    setDecrypted(null);
+    setDecryptedNotes(null);
+    setShowPassword(false);
+    setError(null);
+    setIsExpanded(false);
+    setIsModalOpen(false);
+    setIsEditModalOpen(false);
+    setPendingAction(null);
+    masterKeyRef.current = null;
+  }, [item]);
+
+  useEffect(() => {
+    return () => {
+      masterKeyRef.current = null;
+    };
+  }, []);
+
+  const normalizedUrl = normalizeUrl(localItem.url);
+  const categorySlug = localItem.category?.slug;
   const CategoryGlyph = categorySlug ? categoryIcon[categorySlug] : undefined;
   const hasEncryptedNotes = Boolean(
-    item.notesCiphertext && (item.notesNonce || (item.notesEncryptedDek && item.notesDekNonce))
+    localItem.notesCiphertext && (localItem.notesNonce || (localItem.notesEncryptedDek && localItem.notesDekNonce))
   );
   const maskedPassword = "••••••••••••";
 
@@ -56,23 +82,23 @@ export function PasswordCard({ item }: PasswordCardProps) {
       setError(null);
       let password: string;
 
-      if (item.passwordEncryptedDek && item.passwordDekNonce) {
+      if (localItem.passwordEncryptedDek && localItem.passwordDekNonce) {
         // Envelope encryption (current architecture)
         password = await decryptWithEnvelope(
           {
-            ciphertext: item.passwordCiphertext,
-            nonce: item.passwordNonce,
-            encryptedDek: item.passwordEncryptedDek,
-            dekNonce: item.passwordDekNonce,
+            ciphertext: localItem.passwordCiphertext,
+            nonce: localItem.passwordNonce,
+            encryptedDek: localItem.passwordEncryptedDek,
+            dekNonce: localItem.passwordDekNonce,
           },
           key
         );
-      } else if (item.passwordCiphertext && item.passwordNonce) {
+      } else if (localItem.passwordCiphertext && localItem.passwordNonce) {
         // Legacy fallback (no encrypted DEK stored)
         password = await decryptSecret(
           {
-            ciphertext: item.passwordCiphertext,
-            nonce: item.passwordNonce,
+            ciphertext: localItem.passwordCiphertext,
+            nonce: localItem.passwordNonce,
           },
           key
         );
@@ -81,24 +107,24 @@ export function PasswordCard({ item }: PasswordCardProps) {
       }
 
       setDecrypted(password);
-      if (item.notesCiphertext) {
+      if (localItem.notesCiphertext) {
         try {
           let notes: string | null = null;
-          if (item.notesEncryptedDek && item.notesDekNonce && item.notesNonce) {
+          if (localItem.notesEncryptedDek && localItem.notesDekNonce && localItem.notesNonce) {
             notes = await decryptWithEnvelope(
               {
-                ciphertext: item.notesCiphertext,
-                nonce: item.notesNonce,
-                encryptedDek: item.notesEncryptedDek,
-                dekNonce: item.notesDekNonce,
+                ciphertext: localItem.notesCiphertext,
+                nonce: localItem.notesNonce,
+                encryptedDek: localItem.notesEncryptedDek,
+                dekNonce: localItem.notesDekNonce,
               },
               key
             );
-          } else if (item.notesNonce) {
+          } else if (localItem.notesNonce) {
             notes = await decryptSecret(
               {
-                ciphertext: item.notesCiphertext,
-                nonce: item.notesNonce,
+                ciphertext: localItem.notesCiphertext,
+                nonce: localItem.notesNonce,
               },
               key
             );
@@ -130,13 +156,32 @@ export function PasswordCard({ item }: PasswordCardProps) {
       // Toggle visibility if already decrypted
       setShowPassword(!showPassword);
     } else {
+      setPendingAction("view");
       setIsModalOpen(true);
     }
   };
 
   const handleAccountPasswordSuccess = async (key: Uint8Array) => {
-    await decryptSecrets(key);
-    setIsModalOpen(false);
+    try {
+      await decryptSecrets(key);
+      masterKeyRef.current = key;
+      if (pendingAction === "edit") {
+        setIsEditModalOpen(true);
+      }
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleEditClick = () => {
+    if (isDecrypting) return;
+    if (decrypted && masterKeyRef.current) {
+      setIsEditModalOpen(true);
+      setPendingAction(null);
+      return;
+    }
+    setPendingAction("edit");
+    setIsModalOpen(true);
   };
 
   const handleCopy = async (text: string | null | undefined, label: string) => {
@@ -147,6 +192,67 @@ export function PasswordCard({ item }: PasswordCardProps) {
     } catch {
       toast.error("Failed to copy");
     }
+  };
+
+  const handleEditModalClose = () => {
+    setIsEditModalOpen(false);
+    masterKeyRef.current = null;
+    setPendingAction(null);
+  };
+
+  const handleEditSuccess = (payload: {
+    password: string;
+    notes: string | null;
+    websiteName: string;
+    username?: string;
+    email?: string;
+    url?: string;
+    categoryId?: string;
+    encrypted?: {
+      passwordCiphertext: string;
+      passwordNonce: string;
+      passwordEncryptedDek?: string | null;
+      passwordDekNonce?: string | null;
+      passwordSalt?: string | null;
+      notesCiphertext?: string | null;
+      notesNonce?: string | null;
+      notesEncryptedDek?: string | null;
+      notesDekNonce?: string | null;
+    };
+  }) => {
+    setDecrypted(payload.password);
+    setDecryptedNotes(payload.notes);
+    setShowPassword(true);
+    setLocalItem((prev) => {
+      const nextCategory = payload.categoryId
+        ? categories.find((category) => category.id === payload.categoryId) || (prev.category?.id === payload.categoryId ? prev.category : null)
+        : null;
+      return {
+        ...prev,
+        websiteName: payload.websiteName,
+        username: payload.username ?? null,
+        email: payload.email ?? null,
+        url: payload.url ?? null,
+        category: payload.categoryId
+          ? nextCategory
+            ? {
+                id: nextCategory.id,
+                name: nextCategory.name,
+                slug: nextCategory.slug ?? prev.category?.slug ?? nextCategory.name.toLowerCase(),
+              }
+            : null
+          : null,
+        passwordCiphertext: payload.encrypted?.passwordCiphertext ?? prev.passwordCiphertext,
+        passwordNonce: payload.encrypted?.passwordNonce ?? prev.passwordNonce,
+        passwordEncryptedDek: payload.encrypted?.passwordEncryptedDek ?? prev.passwordEncryptedDek,
+        passwordDekNonce: payload.encrypted?.passwordDekNonce ?? prev.passwordDekNonce,
+        passwordSalt: payload.encrypted?.passwordSalt ?? prev.passwordSalt,
+        notesCiphertext: payload.encrypted?.notesCiphertext ?? prev.notesCiphertext,
+        notesNonce: payload.encrypted?.notesNonce ?? prev.notesNonce,
+        notesEncryptedDek: payload.encrypted?.notesEncryptedDek ?? prev.notesEncryptedDek,
+        notesDekNonce: payload.encrypted?.notesDekNonce ?? prev.notesDekNonce,
+      };
+    });
   };
 
   return (
@@ -182,18 +288,18 @@ export function PasswordCard({ item }: PasswordCardProps) {
                 <CategoryGlyph className="h-6 w-6" strokeWidth={2.25} />
               </span>
             ) : (
-              <Favicon domain={normalizedUrl?.hostname ?? item.websiteName} size={96} className="w-12 h-12" />
+              <Favicon domain={normalizedUrl?.hostname ?? localItem.websiteName} size={96} className="w-12 h-12" />
             )}
           </motion.div>
 
           {/* Website Info */}
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold text-[var(--aegis-text-heading)] tracking-tight truncate">
-              {item.websiteName}
+              {localItem.websiteName}
             </h3>
-            {item.username && (
+            {localItem.username && (
               <p className="text-sm text-[var(--aegis-text-muted)] truncate">
-                {item.username}
+                {localItem.username}
               </p>
             )}
           </div>
@@ -239,13 +345,13 @@ export function PasswordCard({ item }: PasswordCardProps) {
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
-                        value={item.username ?? "Not provided"}
+                        value={localItem.username ?? "Not provided"}
                         readOnly
                         className="input-glass flex-1 text-sm"
                       />
-                      {item.username && (
+                      {localItem.username && (
                         <motion.button
-                          onClick={() => handleCopy(item.username, "Username")}
+                          onClick={() => handleCopy(localItem.username, "Username")}
                           className="h-11 px-4 rounded-lg bg-[var(--aegis-bg-elevated)] hover:bg-[var(--aegis-accent-primary)] hover:text-[var(--aegis-bg-deep)] transition-all duration-300"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
@@ -264,13 +370,13 @@ export function PasswordCard({ item }: PasswordCardProps) {
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
-                        value={item.email ?? "Not provided"}
+                        value={localItem.email ?? "Not provided"}
                         readOnly
                         className="input-glass flex-1 text-sm"
                       />
-                      {item.email && (
+                      {localItem.email && (
                         <motion.button
-                          onClick={() => handleCopy(item.email ?? "", "Email")}
+                          onClick={() => handleCopy(localItem.email ?? "", "Email")}
                           className="h-11 px-4 rounded-lg bg-[var(--aegis-bg-elevated)] hover:bg-[var(--aegis-accent-primary)] hover:text-[var(--aegis-bg-deep)] transition-all duration-300"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
@@ -289,7 +395,7 @@ export function PasswordCard({ item }: PasswordCardProps) {
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
-                        value={item.url ?? "Not provided"}
+                        value={localItem.url ?? "Not provided"}
                         readOnly
                         className="input-glass flex-1 text-sm"
                       />
@@ -318,7 +424,7 @@ export function PasswordCard({ item }: PasswordCardProps) {
                     {decryptedNotes
                       ? decryptedNotes
                       : hasEncryptedNotes
-                        ? "Notes are encrypted. Unlock with your passphrase."
+                        ? "Notes are encrypted. Unlock with your account password."
                         : "No notes saved."}
                   </div>
                 </div>
@@ -375,20 +481,51 @@ export function PasswordCard({ item }: PasswordCardProps) {
                     </motion.p>
                   )}
                 </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <motion.button
+                    onClick={handleEditClick}
+                    className="h-11 px-4 rounded-lg bg-[var(--aegis-accent-primary)] text-[var(--aegis-bg-deep)] font-medium flex items-center gap-2 hover:shadow-lg transition-all duration-300 disabled:opacity-60"
+                    whileHover={{ scale: 1.04, y: -1 }}
+                    whileTap={{ scale: 0.96 }}
+                    disabled={isDecrypting}
+                  >
+                    <PencilLine className="w-4 h-4" strokeWidth={2} />
+                    Edit Entry
+                  </motion.button>
+                </div>
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
       </motion.div>
 
-      {/* Passphrase Modal - Only shown when vault is locked */}
+      {/* Authentication modal reused for decrypting and editing */}
       <AccountPasswordModal
         open={isModalOpen}
-        submitLabel="Decrypt"
-        title="Decrypt Password"
-        description="Enter your account password to decrypt this entry."
+        submitLabel={pendingAction === "edit" ? "Unlock" : "Decrypt"}
+        title={pendingAction === "edit" ? "Unlock Entry" : "Decrypt Password"}
+        description={
+          pendingAction === "edit"
+            ? "Enter your account password to decrypt and enable editing for this entry."
+            : "Enter your account password to decrypt this entry."
+        }
         onAuthenticated={handleAccountPasswordSuccess}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setPendingAction(null);
+        }}
+      />
+
+      <EditPasswordModal
+        isOpen={isEditModalOpen}
+        onClose={handleEditModalClose}
+        item={localItem}
+        categories={categories}
+        decryptedPassword={decrypted}
+        decryptedNotes={decryptedNotes}
+        masterKey={masterKeyRef.current}
+        onUpdated={handleEditSuccess}
       />
     </>
   );

@@ -4,6 +4,7 @@
 export { Sidebar } from "./Sidebar";
 export { PasswordCard } from "./PasswordCard";
 export { AddPasswordModal } from "./AddPasswordModal";
+export { EditPasswordModal } from "./EditPasswordModal";
 export { ManageCategoriesModal } from "./ManageCategoriesModal";
 export { DashboardLayout } from "./DashboardLayout";
 export { default as Favicon } from "./Favicon";

@@ -2,12 +2,12 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Shield, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AccountPasswordModal from "./account-password-modal";
 import { encryptWithEnvelope } from "@/lib/crypto";
 import { useSession } from "next-auth/react";
@@ -30,11 +30,72 @@ type AddPasswordModalProps = {
   categories?: Array<{ id: string; name: string }>;
 };
 
-export function AddPasswordModal({ isOpen, onClose, categories = [] }: AddPasswordModalProps) {
+export function AddPasswordModal({ isOpen, onClose, categories: categoriesProp = [] }: AddPasswordModalProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
   const { data: session } = useSession();
+  const [seedTriggered, setSeedTriggered] = useState(false);
+
+  const shouldFetchCategories = isOpen && categoriesProp.length === 0;
+
+  const { data: fetchedCategories = [], isLoading: isLoadingCategories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const res = await fetch("/api/vault/categories");
+      if (!res.ok) throw new Error("Failed to fetch categories");
+      const json = await res.json();
+      return json.categories as Array<{ id: string; name: string }>;
+    },
+    staleTime: 1000 * 30,
+    enabled: shouldFetchCategories,
+  });
+
+  const {
+    mutate: seedCategories,
+    isPending: isSeedingCategories,
+  } = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/vault/categories/seed", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: "Failed to seed categories" }));
+        throw new Error(body.error || "Failed to seed categories");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to seed categories");
+      setSeedTriggered(false);
+    },
+  });
+
+  useEffect(() => {
+    if (
+      shouldFetchCategories &&
+      !isLoadingCategories &&
+      fetchedCategories.length === 0 &&
+      !seedTriggered &&
+      !isSeedingCategories
+    ) {
+      setSeedTriggered(true);
+      seedCategories();
+    }
+  }, [
+    shouldFetchCategories,
+    isLoadingCategories,
+    fetchedCategories.length,
+    seedTriggered,
+    isSeedingCategories,
+    seedCategories,
+  ]);
+
+  const categories = useMemo(
+    () => (categoriesProp.length > 0 ? categoriesProp : fetchedCategories),
+    [categoriesProp, fetchedCategories]
+  );
 
   const {
     register,
@@ -252,7 +313,19 @@ export function AddPasswordModal({ isOpen, onClose, categories = [] }: AddPasswo
                 </div>
 
                 {/* Category - Full Width */}
-                {categories.length > 0 && (
+                {isLoadingCategories || isSeedingCategories ? (
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] font-semibold">
+                      Category
+                    </label>
+                    <div className="input-glass w-full flex items-center gap-2 text-[var(--aegis-text-muted)]">
+                      <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                      {isSeedingCategories
+                        ? "Preparing default categories..."
+                        : "Loading categories..."}
+                    </div>
+                  </div>
+                ) : categories.length > 0 ? (
                   <div className="space-y-2">
                     <label className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] font-semibold">
                       Category
@@ -265,6 +338,15 @@ export function AddPasswordModal({ isOpen, onClose, categories = [] }: AddPasswo
                         </option>
                       ))}
                     </select>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] font-semibold">
+                      Category
+                    </label>
+                    <p className="text-xs text-[var(--aegis-text-muted)] bg-[var(--aegis-bg-card)] border border-dashed border-[var(--aegis-border)] rounded-lg p-3">
+                      No categories available yet. Default categories should appear shortly; try reopening this dialog if they do not.
+                    </p>
                   </div>
                 )}
 

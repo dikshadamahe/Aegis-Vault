@@ -35,29 +35,42 @@ export async function POST() {
     resolvedUserId = user.id;
   }
 
-  // Check if user already has categories
-  const existingCount = await prisma.category.count({
-    where: { userId: resolvedUserId },
+  const userIdForQuery = resolvedUserId as string;
+
+  const existing = await prisma.category.findMany({
+    where: { userId: userIdForQuery },
+    select: { slug: true },
   });
 
-  if (existingCount > 0) {
-    return NextResponse.json(
-      { error: "User already has categories" },
-      { status: 409 }
+  const existingSlugs = new Set(existing.map((category) => category.slug));
+  const toCreate = DEFAULT_CATEGORIES.filter((cat) => !existingSlugs.has(cat.slug));
+
+  if (toCreate.length > 0) {
+    await Promise.all(
+      toCreate.map((cat) =>
+        prisma.category.create({
+          data: {
+            userId: userIdForQuery,
+            name: cat.name,
+            slug: cat.slug,
+          },
+        })
+      )
     );
   }
 
-  // Create default categories
-  const created = await prisma.category.createMany({
-    data: DEFAULT_CATEGORIES.map((cat) => ({
-      userId: resolvedUserId,
-      name: cat.name,
-      slug: cat.slug,
-    })),
+  const categories = await prisma.category.findMany({
+    where: { userId: userIdForQuery },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, slug: true },
   });
 
   return NextResponse.json({
-    message: `${created.count} default categories created`,
-    count: created.count,
+    message:
+      toCreate.length > 0
+        ? `${toCreate.length} default categories added.`
+        : "All default categories were already present.",
+    added: toCreate.length,
+    categories,
   });
 }

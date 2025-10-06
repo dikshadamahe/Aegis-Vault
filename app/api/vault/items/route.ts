@@ -117,7 +117,6 @@ export async function POST(req: Request) {
 
   const created = await prisma.password.create({
     data: {
-      userId: resolvedUserId,
       websiteName: data.websiteName,
       email: data.email || undefined,
       username: data.username || undefined,
@@ -131,7 +130,16 @@ export async function POST(req: Request) {
       notesNonce: data.notesNonce || undefined,
       notesEncryptedDek: data.notesEncryptedDek || undefined,
       notesDekNonce: data.notesDekNonce || undefined,
-      categoryId: data.categoryId || undefined,
+      user: {
+        connect: { id: resolvedUserId },
+      },
+      ...(data.categoryId
+        ? {
+            category: {
+              connect: { id: data.categoryId },
+            },
+          }
+        : {}),
     },
     select: {
       id: true,

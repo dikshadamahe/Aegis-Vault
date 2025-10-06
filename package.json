@@ -10,7 +10,7 @@
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:sync": "prisma db push",
-    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
+    "seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seed.ts",
     "test": "vitest run",
     "e2e": "playwright install --with-deps && playwright test",
     "e2e:headed": "playwright install --with-deps && playwright test --headed",

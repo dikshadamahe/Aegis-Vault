@@ -5,21 +5,49 @@ import { Shield, Lock, Key, ChevronLeft, ChevronRight, LogOut } from "lucide-rea
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
+import { categoryIcon } from "@/constants/category-icon";
 
 const navItems = [
   { href: "/vault", label: "Vault", icon: Lock },
   { href: "/generator", label: "Generator", icon: Key },
 ];
 
-export function Sidebar() {
+type SidebarProps = {
+  onCategoryFilter?: (categorySlug: string | null) => void;
+  selectedCategory?: string | null;
+};
+
+export function Sidebar({ onCategoryFilter, selectedCategory }: SidebarProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
 
+  const { data: categories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const res = await fetch("/api/vault/categories");
+      if (!res.ok) throw new Error("Failed to fetch categories");
+      const json = await res.json();
+      return json.categories as Array<{ id: string; name: string; slug: string }>;
+    },
+  });
+
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.push("/sign-in");
+  };
+
+  const handleCategoryClick = (slug: string) => {
+    const nextValue = selectedCategory === slug ? null : slug;
+    onCategoryFilter?.(nextValue);
+
+    if (pathname !== "/vault") {
+      const search = new URLSearchParams();
+      if (nextValue) search.set("category", nextValue);
+      router.push(`/vault${search.toString() ? `?${search.toString()}` : ""}`);
+    }
   };
 
   return (
@@ -145,8 +173,77 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {categories && categories.length > 0 && (
+        <motion.div
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.3 }}
+          className="h-px bg-[var(--aegis-border)] mb-4 mx-2"
+          style={{ transformOrigin: "left" }}
+        />
+      )}
+
+      {categories && categories.length > 0 ? (
+        <div className="flex-1 overflow-y-auto space-y-1 px-1 scrollbar-thin">
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.p
+                key="sidebar-categories-label"
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.25 }}
+                className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] mb-2 px-3 font-semibold"
+              >
+                Categories
+              </motion.p>
+            )}
+          </AnimatePresence>
+
+          {categories.map((category, idx) => {
+            const Icon = categoryIcon[category.slug] || Shield;
+            const isActive = selectedCategory === category.slug;
+            return (
+              <motion.button
+                key={category.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.35, delay: 0.05 * idx, ease: [0.16, 1, 0.3, 1] }}
+                onClick={() => handleCategoryClick(category.slug)}
+                className={`
+                  w-full h-11 rounded-lg flex items-center gap-3 px-3
+                  transition-all duration-300
+                  ${
+                    isActive
+                      ? "bg-[var(--aegis-bg-elevated)] border border-[var(--aegis-accent-primary)] text-[var(--aegis-accent-primary)]"
+                      : "text-[var(--aegis-text-body)] hover:bg-[var(--aegis-bg-card)] hover:text-[var(--aegis-text-heading)]"
+                  }
+                `}
+                whileHover={{ x: 4, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2} />
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.span
+                      key={`${category.id}-label`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-sm font-medium tracking-tight whitespace-nowrap text-left flex-1"
+                    >
+                      {category.name}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex-1" />
+      )}
 
       {/* Bottom Controls - Fixed alignment */}
       <div className="mt-auto pt-6 flex flex-col gap-2">

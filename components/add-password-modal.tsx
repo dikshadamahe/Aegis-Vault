@@ -3,11 +3,12 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Lock, Globe, User, Mail, FileText, Eye, EyeOff, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { encryptWithEnvelope, deriveKeyFromPassphrase } from "@/lib/crypto";
+import { encryptWithEnvelope } from "@/lib/crypto";
 import { toast } from "sonner";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { categoryIcon } from "@/constants/category-icon";
 import PassphraseModal from "./passphrase-modal";
+import { useSession } from "next-auth/react";
 
 type Category = {
   id: string;
@@ -33,7 +34,7 @@ export function AddPasswordModal({ open, onClose }: AddPasswordModalProps) {
 
   const [showPassword, setShowPassword] = useState(false);
   const [isPassphraseModalOpen, setIsPassphraseModalOpen] = useState(false);
-  const [tempSalt, setTempSalt] = useState<string>("");
+  const { data: session } = useSession();
 
   const queryClient = useQueryClient();
 
@@ -72,7 +73,8 @@ export function AddPasswordModal({ open, onClose }: AddPasswordModalProps) {
         passwordNonce: passwordPayload.nonce,
         passwordEncryptedDek: passwordPayload.encryptedDek,
         passwordDekNonce: passwordPayload.dekNonce,
-        passwordSalt: tempSalt,
+        // For compatibility, store user's encryptionSalt alongside item
+        passwordSalt: (session as any)?.encryptionSalt || "",
         // Notes envelope encryption fields (if provided)
         notesCiphertext: notesPayload?.ciphertext,
         notesNonce: notesPayload?.nonce,
@@ -133,12 +135,7 @@ export function AddPasswordModal({ open, onClose }: AddPasswordModalProps) {
       return;
     }
 
-    // Generate salt for this password
-    const salt = generateSalt();
-    const saltB64 = u8ToBase64(salt);
-    setTempSalt(saltB64);
-    
-    // Open passphrase modal to get MEK
+    // Open passphrase modal to derive MEK using user's encryptionSalt
     setIsPassphraseModalOpen(true);
   };
   
@@ -398,29 +395,16 @@ export function AddPasswordModal({ open, onClose }: AddPasswordModalProps) {
       )}
       
       {/* Passphrase Modal for encryption */}
-      {isPassphraseModalOpen && tempSalt && (
+      {isPassphraseModalOpen && (
         <PassphraseModal
           open={isPassphraseModalOpen}
-          salt={tempSalt}
           reason="Enter passphrase to encrypt password"
-          onSuccess={handlePassphraseSuccess}
+              onKeyDerived={handlePassphraseSuccess}
           onCancel={() => setIsPassphraseModalOpen(false)}
         />
       )}
     </AnimatePresence>
   );
-}
-
-// Helper to generate random salt
-function generateSalt(): Uint8Array {
-  const u8 = new Uint8Array(16);
-  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
-    window.crypto.getRandomValues(u8);
-    return u8;
-  }
-  // Fallback (not recommended for production)
-  for (let i = 0; i < u8.length; i++) u8[i] = Math.floor(Math.random() * 256);
-  return u8;
 }
 
 // Helper to convert Uint8Array to base64

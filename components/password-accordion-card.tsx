@@ -4,10 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Eye, EyeOff, Copy, Edit, Trash2, ExternalLink, Globe } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { categoryIcon } from "@/constants/category-icon";
-import { WebsiteLogo } from "./website-logo";
 import PassphraseModal from "./passphrase-modal";
 import { decryptWithEnvelope, decryptSecret } from "@/lib/crypto";
+import Favicon from "./Favicon";
 
 type PasswordAccordionCardProps = {
   id: string;
@@ -50,7 +49,8 @@ export function PasswordAccordionCard({
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const CategoryIcon = categoryIcon[category.slug] || Globe;
+  // Extract domain for favicon
+  const domain = url ? getDomain(url) : null;
 
   // STATELESS DECRYPTION: Fresh operation each time
   const performDecryption = async (key: Uint8Array) => {
@@ -135,16 +135,12 @@ export function PasswordAccordionCard({
         className="w-full p-5 flex items-center justify-between hover:bg-white/5 transition-colors duration-300"
       >
         <div className="flex items-center gap-4">
-          {/* Website Logo or Category Icon */}
+          {/* Dynamic Favicon or fallback */}
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--aegis-accent-teal)]/20 to-[var(--aegis-accent-blue)]/20 flex items-center justify-center border border-[var(--aegis-accent-teal)]/30">
-            {url ? (
-              <WebsiteLogo 
-                url={url} 
-                websiteName={websiteName} 
-                className="w-6 h-6 rounded"
-              />
+            {domain ? (
+              <Favicon domain={domain} className="w-6 h-6 rounded" />
             ) : (
-              <CategoryIcon className="w-5 h-5 text-[var(--aegis-accent-teal)]" strokeWidth={2} />
+              <Globe className="w-5 h-5 text-[var(--aegis-accent-teal)]" strokeWidth={2} />
             )}
           </div>
           <div className="text-left">
@@ -297,11 +293,19 @@ export function PasswordAccordionCard({
       {/* Passphrase Modal - Stateless decryption */}
       <PassphraseModal
         open={isModalOpen}
-        salt={passwordSalt}
         reason="Enter passphrase to decrypt"
-        onSuccess={performDecryption}
+        onKeyDerived={performDecryption}
         onCancel={() => setIsModalOpen(false)}
       />
     </motion.div>
   );
+}
+
+function getDomain(url: string): string | null {
+  try {
+    const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+    return u.hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
 }

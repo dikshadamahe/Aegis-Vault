@@ -6,28 +6,37 @@
 
 @layer base {
   :root {
-    /* Aegis Vault Design Tokens - Dark Glassmorphism Theme */
-    --aegis-bg-deep: #0D1117;
+    /* Aegis Vault Design System - Hyper-Minimalist Dark Glassmorphism */
+    --aegis-bg-deep: #0A0F19;
     --aegis-bg-card: rgba(22, 27, 34, 0.7);
     --aegis-bg-elevated: rgba(30, 35, 42, 0.85);
+    --aegis-accent-primary: #00AEEF;
     --aegis-accent-teal: #00BFA5;
     --aegis-accent-blue: #58A6FF;
-    --aegis-text-body: #E0E0E0;
+    --aegis-text-body: #C3CAD3;
     --aegis-text-heading: #FFFFFF;
     --aegis-text-muted: #8B949E;
-    --aegis-border: rgba(255, 255, 255, 0.1);
-    --aegis-border-hover: rgba(0, 191, 165, 0.3);
-    --aegis-glow: rgba(0, 191, 165, 0.15);
+    --aegis-border: rgba(56, 97, 142, 0.3);
+    --aegis-border-hover: rgba(0, 174, 239, 0.5);
+    --aegis-glow: rgba(0, 174, 239, 0.2);
+    
+    /* 8-point Grid System */
+    --space-1: 8px;
+    --space-2: 16px;
+    --space-3: 24px;
+    --space-4: 32px;
+    --space-5: 40px;
+    --space-6: 48px;
     
     /* Radii */
-    --radius-sm: 0.375rem;
-    --radius-md: 0.5rem;
-    --radius-lg: 0.75rem;
-    --radius-xl: 1rem;
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
     
     /* Shadows */
     --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    --shadow-glow: 0 0 20px rgba(0, 191, 165, 0.15);
+    --shadow-glow: 0 0 24px rgba(0, 174, 239, 0.2);
   }
 }
 

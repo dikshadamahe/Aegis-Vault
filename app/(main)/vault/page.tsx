@@ -1,262 +1,224 @@
 "use client";
 
-import { AegisLayout } from "@/components/aegis-layout";
-import { PasswordAccordionCard } from "@/components/password-accordion-card";
-import { AddPasswordModal } from "@/components/add-password-modal";
-import { ManageCategoriesModal } from "@/components/manage-categories-modal";
-import { motion } from "framer-motion";
-import { Plus, Search, FolderCog } from "lucide-react";
-import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Plus, Search, Folder, Lock, Loader2 } from "lucide-react";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { PasswordCard } from "@/components/PasswordCard";
+import { AddPasswordModal } from "@/components/AddPasswordModal";
+import { ManageCategoriesModal } from "@/components/ManageCategoriesModal";
 
 type VaultItem = {
   id: string;
   websiteName: string;
   username?: string;
-  email?: string;
   url?: string;
-  notes?: string;
-  category: { id: string; name: string; slug: string };
   passwordCiphertext: string;
   passwordNonce: string;
-  passwordSalt: string;
   passwordEncryptedDek?: string;
   passwordDekNonce?: string;
-  notesCiphertext?: string;
-  notesNonce?: string;
-  notesEncryptedDek?: string;
-  notesDekNonce?: string;
+};
+
+const headerVariants = {
+  hidden: { opacity: 0, y: -20 },
+  show: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
+};
+
+const listVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.3,
+    },
+  },
 };
 
 export default function VaultPage() {
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
 
-  // Fetch vault items
-  const { data, isLoading } = useQuery({
-    queryKey: ["vault-items", selectedCategory, searchQuery],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["vault-items"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedCategory) params.set("category", selectedCategory);
-      if (searchQuery) params.set("search", searchQuery);
-      const res = await fetch(`/api/vault/items?${params.toString()}`);
-      if (!res.ok) throw new Error("Failed to fetch vault items");
+      const res = await fetch("/api/vault/items");
+      if (!res.ok) throw new Error("Failed to fetch items");
       const json = await res.json();
       return json.items as VaultItem[];
     },
   });
 
-  // Fetch categories
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
       const res = await fetch("/api/vault/categories");
       if (!res.ok) throw new Error("Failed to fetch categories");
       const json = await res.json();
-      return json.categories as Array<{ id: string; name: string; slug: string }>;
+      return json.categories as Array<{ id: string; name: string }>;
     },
   });
 
-  // Group passwords by category
-  const groupedPasswords = useMemo(() => {
-    if (!data) return {};
-    
-    const groups: Record<string, VaultItem[]> = {};
-    data.forEach((item) => {
-      const categoryName = item.category.name;
-      if (!groups[categoryName]) {
-        groups[categoryName] = [];
-      }
-      groups[categoryName].push(item);
-    });
-    
-    return groups;
-  }, [data]);
-
-  const categoryKeys = Object.keys(groupedPasswords);
-
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.08,
-        delayChildren: 0.1,
-      },
-    },
-  };
-
-  const categoryContainer = {
-    hidden: { opacity: 0, y: 20 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.4,
-        ease: "easeInOut",
-        staggerChildren: 0.06,
-      },
-    },
-  };
-
-  const handleCategoryFilter = (categorySlug: string | null) => {
-    setSelectedCategory(categorySlug);
-  };
+  // Filter logic
+  const filteredItems = data?.filter((item) => {
+    const matchesSearch = item.websiteName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         item.username?.toLowerCase().includes(searchQuery.toLowerCase());
+    // Category filter would need categoryId in the item data
+    return matchesSearch;
+  });
 
   return (
-    <AegisLayout 
-      onCategoryFilter={handleCategoryFilter}
+    <DashboardLayout
+      onCategoryFilter={setSelectedCategory}
       selectedCategory={selectedCategory}
     >
-      {/* Header */}
+      {/* Page Header */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
+        variants={headerVariants}
+        initial="hidden"
+        animate="show"
         className="mb-8"
       >
-        <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-[var(--aegis-text-heading)] to-[var(--aegis-accent-teal)] bg-clip-text text-transparent leading-tight overflow-visible">
-          Aegis Vault
-        </h1>
-        <p className="text-[var(--aegis-text-muted)] text-lg">
-          Your passwords, encrypted and secure.
-        </p>
-      </motion.div>
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-5xl font-bold tracking-tight mb-2 bg-gradient-to-r from-[var(--aegis-text-heading)] via-[var(--aegis-accent-primary)] to-[var(--aegis-accent-teal)] bg-clip-text text-transparent">
+              Aegis Vault
+            </h1>
+            <p className="text-[var(--aegis-text-muted)] text-lg">
+              Your passwords, encrypted and secure.
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <motion.button
+              onClick={() => setIsCategoriesModalOpen(true)}
+              className="h-12 px-5 rounded-lg flex items-center gap-2 bg-[var(--aegis-bg-card)] hover:bg-[var(--aegis-bg-elevated)] text-[var(--aegis-text-body)] hover:text-[var(--aegis-text-heading)] transition-all duration-300 border border-[var(--aegis-border)] hover:border-[var(--aegis-border-hover)]"
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Folder className="w-4 h-4" strokeWidth={2} />
+              <span className="text-sm font-medium">Categories</span>
+            </motion.button>
+            
+            <motion.button
+              onClick={() => setIsAddModalOpen(true)}
+              className="h-12 px-6 rounded-lg flex items-center gap-2 font-medium transition-all duration-300"
+              style={{
+                background: "linear-gradient(135deg, var(--aegis-accent-primary) 0%, var(--aegis-accent-teal) 100%)",
+                color: "white",
+                boxShadow: "var(--shadow-glow)",
+              }}
+              whileHover={{ scale: 1.02, y: -2, boxShadow: "0 0 32px rgba(0, 174, 239, 0.4)" }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Plus className="w-5 h-5" strokeWidth={2.5} />
+              Add Password
+            </motion.button>
+          </div>
+        </div>
 
-      {/* Search & Filter Bar */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1, ease: "easeInOut" }}
-        className="glass-card p-4 mb-8 flex flex-col md:flex-row gap-4"
-      >
-        {/* Search */}
-        <div className="flex-1 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)]" />
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--aegis-text-muted)]" strokeWidth={2} />
           <input
-            type="text"
+            type="search"
             placeholder="Search passwords..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="input-glass pl-12"
+            className="input-glass w-full pl-12"
+            style={{ height: "48px" }}
           />
         </div>
-
-        {/* Add New Button */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setIsAddModalOpen(true)}
-          className="btn-accent flex items-center justify-center gap-2 whitespace-nowrap"
-        >
-          <Plus className="w-5 h-5" />
-          Add New
-        </motion.button>
-
-        {/* Manage Categories Button */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setIsCategoriesModalOpen(true)}
-          className="px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center gap-2 whitespace-nowrap transition-colors duration-300"
-          title="Manage Categories"
-        >
-          <FolderCog className="w-5 h-5 text-white" />
-        </motion.button>
       </motion.div>
 
-      {/* Vault Content */}
+      {/* Content */}
       {isLoading ? (
-        <div className="text-center text-[var(--aegis-text-muted)] py-20">
-          Loading vault...
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-[var(--aegis-accent-primary)] animate-spin mb-4" strokeWidth={2} />
+          <p className="text-[var(--aegis-text-muted)]">Loading your vault...</p>
         </div>
-      ) : !data || data.length === 0 ? (
+      ) : error ? (
+        <div className="glass-card text-center py-12" style={{ padding: "var(--space-5)" }}>
+          <Lock className="w-12 h-12 text-red-400 mx-auto mb-4" strokeWidth={2} />
+          <h3 className="text-xl font-semibold text-[var(--aegis-text-heading)] mb-2">
+            Failed to load vault
+          </h3>
+          <p className="text-[var(--aegis-text-muted)]">
+            Please try refreshing the page
+          </p>
+        </div>
+      ) : filteredItems && filteredItems.length > 0 ? (
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, ease: "easeInOut" }}
-          className="text-center py-20"
+          variants={listVariants}
+          initial="hidden"
+          animate="show"
+          className="space-y-3"
         >
-          <div className="glass-card-elevated p-12 max-w-md mx-auto">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--aegis-accent-teal)] to-[var(--aegis-accent-blue)] flex items-center justify-center mx-auto mb-6">
-              <Plus className="w-10 h-10 text-[var(--aegis-bg-deep)]" />
-            </div>
-            <h3 className="text-2xl font-semibold mb-2 text-white">Your vault is empty</h3>
-            <p className="text-[var(--aegis-text-muted)] mb-6">
-              Start by adding your first password
-            </p>
-            <button onClick={() => setIsAddModalOpen(true)} className="btn-accent">
-              Add Your First Password
-            </button>
-          </div>
+          <AnimatePresence mode="popLayout">
+            {filteredItems.map((item) => (
+              <PasswordCard key={item.id} item={item} />
+            ))}
+          </AnimatePresence>
         </motion.div>
       ) : (
         <motion.div
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="space-y-10"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="glass-card text-center py-20"
+          style={{ padding: "var(--space-6)" }}
         >
-          {categoryKeys.map((categoryName) => (
-            <motion.div
-              key={categoryName}
-              variants={categoryContainer}
-              className="space-y-4"
-            >
-              {/* Category Header */}
-              <motion.div
-                className="flex items-center gap-3"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <Lock className="w-16 h-16 text-[var(--aegis-text-muted)] mx-auto mb-4 opacity-50" strokeWidth={1.5} />
+            <h3 className="text-2xl font-bold text-[var(--aegis-text-heading)] mb-2">
+              {searchQuery ? "No passwords found" : "Your vault is empty"}
+            </h3>
+            <p className="text-[var(--aegis-text-muted)] mb-6">
+              {searchQuery 
+                ? "Try a different search term" 
+                : "Get started by adding your first password"
+              }
+            </p>
+            {!searchQuery && (
+              <motion.button
+                onClick={() => setIsAddModalOpen(true)}
+                className="btn-accent"
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[var(--aegis-border)] to-transparent" />
-                <h2 className="text-2xl font-bold text-white">
-                  {categoryName}
-                </h2>
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[var(--aegis-border)] to-transparent" />
-              </motion.div>
-
-              {/* Password Cards for this Category */}
-              <div className="space-y-3">
-                {groupedPasswords[categoryName].map((item) => (
-                  <PasswordAccordionCard
-                    key={item.id}
-                    id={item.id}
-                    websiteName={item.websiteName}
-                    username={item.username}
-                    email={item.email}
-                    url={item.url}
-                    notes={item.notes}
-                    category={item.category}
-                    passwordCiphertext={item.passwordCiphertext}
-                    passwordNonce={item.passwordNonce}
-                    passwordSalt={item.passwordSalt}
-                    passwordEncryptedDek={item.passwordEncryptedDek}
-                    passwordDekNonce={item.passwordDekNonce}
-                    onEdit={() => {}}
-                    onDelete={() => {}}
-                  />
-                ))}
-              </div>
-            </motion.div>
-          ))}
+                <Plus className="w-4 h-4 inline mr-2" strokeWidth={2.5} />
+                Add Your First Password
+              </motion.button>
+            )}
+          </motion.div>
         </motion.div>
       )}
 
-      {/* Add Password Modal */}
+      {/* Modals */}
       <AddPasswordModal
-        open={isAddModalOpen}
+        isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
+        categories={categories}
       />
-
-      {/* Manage Categories Modal */}
+      
       <ManageCategoriesModal
-        open={isCategoriesModalOpen}
+        isOpen={isCategoriesModalOpen}
         onClose={() => setIsCategoriesModalOpen(false)}
       />
-    </AegisLayout>
+    </DashboardLayout>
   );
 }

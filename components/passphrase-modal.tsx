@@ -1,116 +1,132 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Lock, X } from "lucide-react";
-import { deriveKeyFromPassphrase } from "@/lib/crypto";
-import { toast } from "sonner";
+import { useVault } from "@/providers/VaultProvider";
+import { motion } from "framer-motion";
+import { Lock, Loader2 } from "lucide-react";
 
-type Props = {
-  open: boolean;
-  reason?: string;
-  salt: string; // base64 encoded salt
-  onSuccess: (key: Uint8Array) => Promise<void>;
+type PassphraseModalProps = {
+  onUnlocked: () => void | Promise<void>;
   onCancel: () => void;
 };
 
-export default function PassphraseModal({ open, reason, salt, onSuccess, onCancel }: Props) {
+export default function PassphraseModal({ onUnlocked, onCancel }: PassphraseModalProps) {
+  const { unlockVault } = useVault();
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!value.trim()) return;
+    if (!value.trim() || loading) return;
+    
     setLoading(true);
+    setError("");
+    
     try {
-      // Convert base64 salt to Uint8Array
-      const saltBytes = base64ToU8(salt);
-      
-      // Derive key from passphrase using libsodium
-      const { key } = await deriveKeyFromPassphrase(value, saltBytes);
-      
-      // Call the success callback with the derived key
-      await onSuccess(key);
+      await unlockVault(value);
       setValue("");
-    } catch (error) {
-      console.error("Key derivation failed:", error);
-      toast.error("Failed to derive key. Please try again.");
+      await onUnlocked();
+    } catch (err: any) {
+      setError("Incorrect passphrase. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100]"
-            onClick={onCancel}
-          />
-
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed inset-0 flex items-center justify-center z-[101] pointer-events-none"
-          >
-            <div className="glass-card-elevated p-8 w-full max-w-md pointer-events-auto relative">
-              <button
-                onClick={onCancel}
-                className="absolute top-4 right-4 text-[var(--aegis-text-muted)] hover:text-[var(--aegis-text-body)] transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex justify-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--aegis-accent-teal)] to-[var(--aegis-accent-blue)] flex items-center justify-center shadow-[0_0_30px_rgba(0,191,165,0.4)]">
-                  <Lock className="w-8 h-8 text-[var(--aegis-bg-deep)]" strokeWidth={2.5} />
-                </div>
-              </div>
-
-              <h3 className="text-2xl font-semibold text-center mb-2">
-                {reason || "Enter Passphrase"}
-              </h3>
-              <p className="text-center text-[var(--aegis-text-muted)] mb-6">
-                Your master passphrase unlocks your vault
-              </p>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <input
-                  type="password"
-                  placeholder="Master passphrase"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  className="input-glass"
-                  autoFocus
-                  disabled={loading}
-                />
-                <button
-                  type="submit"
-                  disabled={loading || !value.trim()}
-                  className="btn-accent w-full disabled:opacity-50 disabled:cursor-not-allowed"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4"
+      onClick={onCancel}
+    >
+      <motion.form
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        onSubmit={handleSubmit}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md"
+      >
+        <div className="glass-card-elevated" style={{ padding: "var(--space-4)" }}>
+          <div className="flex items-center justify-center mb-4">
+            <motion.div
+              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, var(--aegis-accent-primary) 0%, var(--aegis-accent-teal) 100%)",
+              }}
+              animate={{ rotate: [0, 5, -5, 0] }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+            >
+              <Lock className="w-6 h-6 text-white" strokeWidth={2.5} />
+            </motion.div>
+          </div>
+          
+          <h2 className="text-center text-2xl font-bold mb-2 text-[var(--aegis-text-heading)]">
+            Unlock Vault
+          </h2>
+          <p className="text-center text-sm text-[var(--aegis-text-muted)] mb-6">
+            Enter your master passphrase to access your passwords
+          </p>
+          
+          <div className="space-y-4">
+            <div>
+              <input
+                type="password"
+                value={value}
+                onChange={(e) => {
+                  setValue(e.target.value);
+                  setError("");
+                }}
+                placeholder="Master passphrase"
+                className="input-glass w-full"
+                autoFocus
+                disabled={loading}
+              />
+              {error && (
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-xs text-red-400 mt-2"
                 >
-                  {loading ? "Unlocking..." : "Unlock"}
-                </button>
-              </form>
+                  {error}
+                </motion.p>
+              )}
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+            
+            <div className="flex gap-3">
+              <motion.button
+                type="button"
+                onClick={onCancel}
+                className="flex-1 btn-ghost"
+                disabled={loading}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                Cancel
+              </motion.button>
+              <motion.button
+                type="submit"
+                className="flex-1 btn-accent disabled:opacity-50 flex items-center justify-center gap-2"
+                disabled={loading || !value.trim()}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                    Unlocking...
+                  </>
+                ) : (
+                  "Unlock"
+                )}
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      </motion.form>
+    </motion.div>
   );
-}
-
-// Helper to convert base64 to Uint8Array
-function base64ToU8(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const u8 = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-  return u8;
 }

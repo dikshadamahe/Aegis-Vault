@@ -242,57 +242,75 @@ export function Sidebar({ onCategoryFilter, selectedCategory }: SidebarProps) {
         </div>
       )}
 
-      {/* Bottom Controls */}
-      <div className="mt-auto pt-6 space-y-2">
+      {/* Bottom Controls - Fixed alignment */}
+      <div className="mt-auto pt-6 flex flex-col gap-2">
         {/* Lock Vault Button */}
         {!isLocked && (
           <motion.button
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             onClick={lockVault}
-            className="w-full h-11 rounded-lg flex items-center justify-center gap-3 text-[var(--aegis-text-body)] hover:bg-[var(--aegis-accent-primary)]/10 hover:text-[var(--aegis-accent-primary)] transition-all duration-300 border border-[var(--aegis-border)] hover:border-[var(--aegis-accent-primary)]"
+            className="w-full h-11 rounded-lg flex items-center gap-3 px-4 text-[var(--aegis-text-body)] hover:bg-[var(--aegis-accent-primary)]/10 hover:text-[var(--aegis-accent-primary)] transition-all duration-300 border border-[var(--aegis-border)] hover:border-[var(--aegis-accent-primary)]"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            <LockKeyhole className="w-5 h-5" strokeWidth={2} />
-            {isExpanded && (
-              <span className="text-sm font-medium tracking-tight">Lock Vault</span>
-            )}
+            <LockKeyhole className="w-5 h-5 flex-shrink-0" strokeWidth={2} />
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-sm font-medium tracking-tight"
+                >
+                  Lock Vault
+                </motion.span>
+              )}
+            </AnimatePresence>
           </motion.button>
         )}
         
-        {/* Collapse Toggle */}
+        {/* Collapse Toggle - Always at bottom left */}
         <motion.button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full h-11 rounded-lg flex items-center justify-center gap-3 text-[var(--aegis-text-body)] hover:bg-[var(--aegis-bg-card)] hover:text-[var(--aegis-text-heading)] transition-all duration-300"
+          className="w-full h-11 rounded-lg flex items-center gap-3 px-4 text-[var(--aegis-text-body)] hover:bg-[var(--aegis-bg-card)] hover:text-[var(--aegis-text-heading)] transition-all duration-300"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
           {isExpanded ? (
             <>
-              <ChevronLeft className="w-5 h-5" strokeWidth={2} />
+              <ChevronLeft className="w-5 h-5 flex-shrink-0" strokeWidth={2} />
               <span className="text-sm font-medium tracking-tight">Collapse</span>
             </>
           ) : (
-            <ChevronRight className="w-5 h-5" strokeWidth={2} />
+            <ChevronRight className="w-5 h-5 flex-shrink-0" strokeWidth={2} />
           )}
         </motion.button>
 
-        {/* Logout */}
+        {/* Logout Button - Restored and always visible */}
         {session?.user && (
           <motion.button
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.4 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
             onClick={handleLogout}
-            className="w-full h-11 rounded-lg flex items-center justify-center gap-3 text-[var(--aegis-text-body)] hover:bg-red-500/10 hover:text-red-400 transition-all duration-300"
+            className="w-full h-11 rounded-lg flex items-center gap-3 px-4 text-[var(--aegis-text-body)] hover:bg-red-500/10 hover:text-red-400 transition-all duration-300 border border-transparent hover:border-red-500/30"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            <LogOut className="w-5 h-5" strokeWidth={2} />
-            {isExpanded && (
-              <span className="text-sm font-medium tracking-tight">Logout</span>
-            )}
+            <LogOut className="w-5 h-5 flex-shrink-0" strokeWidth={2} />
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-sm font-medium tracking-tight"
+                >
+                  Logout
+                </motion.span>
+              )}
+            </AnimatePresence>
           </motion.button>
         )}
       </div>

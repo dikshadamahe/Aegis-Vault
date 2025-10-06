@@ -91,7 +91,14 @@ export default function VaultPage() {
       >
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="text-5xl font-bold tracking-tight mb-2 bg-gradient-to-r from-[var(--aegis-text-heading)] via-[var(--aegis-accent-primary)] to-[var(--aegis-accent-teal)] bg-clip-text text-transparent">
+            <h1 
+              className="text-5xl font-bold tracking-tight mb-2 bg-gradient-to-r from-[var(--aegis-text-heading)] via-[var(--aegis-accent-primary)] to-[var(--aegis-accent-teal)] bg-clip-text text-transparent"
+              style={{ 
+                lineHeight: "1.2", 
+                paddingBottom: "0.125rem",
+                overflow: "visible" 
+              }}
+            >
               Aegis Vault
             </h1>
             <p className="text-[var(--aegis-text-muted)] text-lg">

@@ -15,10 +15,15 @@ type PasswordCardProps = {
     id: string;
     websiteName: string;
     username?: string;
+    email?: string | null;
     url?: string;
     passwordCiphertext: string;
     passwordNonce: string;
     encryptedDek?: string;
+    notesCiphertext?: string | null;
+    notesNonce?: string | null;
+    notesEncryptedDek?: string | null;
+    notesDekNonce?: string | null;
   };
 };
 
@@ -26,17 +31,25 @@ export function PasswordCard({ item }: PasswordCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [decrypted, setDecrypted] = useState<string | null>(null);
+  const [decryptedNotes, setDecryptedNotes] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isDecrypting, setIsDecrypting] = useState(false);
 
   const { data: session } = useSession();
 
   // Extract domain for favicon using the helper function
-  const domain = extractDomain(item.url);
+  const sanitizedUrl = item.url ? (item.url.startsWith("http") ? item.url : `https://${item.url}`) : undefined;
+  const computedDomain = extractDomain(sanitizedUrl ?? item.websiteName);
+  const hasEncryptedNotes = Boolean(
+    item.notesCiphertext && (item.notesNonce || (item.notesEncryptedDek && item.notesDekNonce))
+  );
+  const maskedPassword = "••••••••••••";
 
   // Decrypt password using the session key
-  const decryptPassword = async (key: Uint8Array) => {
+  const decryptSecrets = async (key: Uint8Array) => {
     try {
+      setIsDecrypting(true);
       setError(null);
       let password: string;
 
@@ -62,6 +75,35 @@ export function PasswordCard({ item }: PasswordCardProps) {
       }
 
       setDecrypted(password);
+      if (item.notesCiphertext) {
+        try {
+          let notes: string | null = null;
+          if (item.notesEncryptedDek && item.notesDekNonce && item.notesNonce) {
+            notes = await decryptWithEnvelope(
+              {
+                ciphertext: item.notesCiphertext,
+                nonce: item.notesNonce,
+                encryptedDek: item.notesEncryptedDek,
+                dekNonce: item.notesDekNonce,
+              },
+              key
+            );
+          } else if (item.notesNonce) {
+            notes = await decryptSecret(
+              {
+                ciphertext: item.notesCiphertext,
+                nonce: item.notesNonce,
+              },
+              key
+            );
+          }
+          setDecryptedNotes(notes);
+        } catch (notesErr) {
+          console.error("Failed to decrypt notes", notesErr);
+        }
+      } else {
+        setDecryptedNotes(null);
+      }
       setShowPassword(true);
       toast.success("Password decrypted");
     } catch (err: any) {
@@ -69,11 +111,15 @@ export function PasswordCard({ item }: PasswordCardProps) {
       setError(message);
       toast.error(message);
       throw err instanceof Error ? err : new Error(message);
+    } finally {
+      setIsDecrypting(false);
+      setIsModalOpen(false);
     }
   };
 
   // Handle eye button click
   const handleEyeClick = async () => {
+    if (isDecrypting) return;
     if (decrypted) {
       // Toggle visibility if already decrypted
       setShowPassword(!showPassword);
@@ -92,11 +138,11 @@ export function PasswordCard({ item }: PasswordCardProps) {
 
     const saltBytes = base64ToUint8(saltBase64);
     const { key } = await deriveKeyFromPassphrase(passphrase, saltBytes);
-    await decryptPassword(key);
-    setIsModalOpen(false);
+    await decryptSecrets(key);
   };
 
-  const handleCopy = async (text: string, label: string) => {
+  const handleCopy = async (text: string | null | undefined, label: string) => {
+    if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
       toast.success(`${label} copied to clipboard`);
@@ -130,7 +176,7 @@ export function PasswordCard({ item }: PasswordCardProps) {
             whileHover={{ scale: 1.1, rotate: 5 }}
             transition={{ type: "spring", stiffness: 400, damping: 10 }}
           >
-            <Favicon domain={domain} size={64} />
+            <Favicon domain={computedDomain ?? sanitizedUrl ?? item.websiteName} size={96} className="w-12 h-12" />
           </motion.div>
 
           {/* Website Info */}
@@ -175,8 +221,101 @@ export function PasswordCard({ item }: PasswordCardProps) {
                 animate={{ y: 0 }}
                 exit={{ y: -20 }}
                 transition={{ duration: 0.3 }}
-                className="pt-6 space-y-4"
+                className="pt-6 space-y-6 border-t border-[var(--aegis-border)]"
               >
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Username */}
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] font-semibold">
+                      Username
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={item.username ?? "Not provided"}
+                        readOnly
+                        className="input-glass flex-1 text-sm"
+                      />
+                      {item.username && (
+                        <motion.button
+                          onClick={() => handleCopy(item.username, "Username")}
+                          className="h-11 px-4 rounded-lg bg-[var(--aegis-bg-elevated)] hover:bg-[var(--aegis-accent-primary)] hover:text-[var(--aegis-bg-deep)] transition-all duration-300"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <Copy className="w-4 h-4" strokeWidth={2} />
+                        </motion.button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] font-semibold">
+                      Email
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={item.email ?? "Not provided"}
+                        readOnly
+                        className="input-glass flex-1 text-sm"
+                      />
+                      {item.email && (
+                        <motion.button
+                          onClick={() => handleCopy(item.email ?? "", "Email")}
+                          className="h-11 px-4 rounded-lg bg-[var(--aegis-bg-elevated)] hover:bg-[var(--aegis-accent-primary)] hover:text-[var(--aegis-bg-deep)] transition-all duration-300"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <Copy className="w-4 h-4" strokeWidth={2} />
+                        </motion.button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* URL */}
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] font-semibold">
+                      Website
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={item.url ?? "Not provided"}
+                        readOnly
+                        className="input-glass flex-1 text-sm"
+                      />
+                      {sanitizedUrl && (
+                        <motion.a
+                          href={sanitizedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="h-11 px-4 rounded-lg bg-[var(--aegis-bg-elevated)] hover:bg-[var(--aegis-accent-primary)] hover:text-[var(--aegis-bg-deep)] transition-all duration-300 flex items-center"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <ExternalLink className="w-4 h-4" strokeWidth={2} />
+                        </motion.a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-2">
+                  <label className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] font-semibold">
+                    Notes
+                  </label>
+                  <div className="rounded-lg bg-[var(--aegis-bg-elevated)] border border-[var(--aegis-border)] px-4 py-3 text-sm text-[var(--aegis-text-body)] whitespace-pre-wrap min-h-[3rem]">
+                    {decryptedNotes
+                      ? decryptedNotes
+                      : hasEncryptedNotes
+                        ? "Notes are encrypted. Unlock with your passphrase."
+                        : "No notes saved."}
+                  </div>
+                </div>
+
                 {/* Password Field */}
                 <div className="space-y-2">
                   <label className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] font-semibold">
@@ -186,13 +325,14 @@ export function PasswordCard({ item }: PasswordCardProps) {
                     <div className="flex-1 relative">
                       <input
                         type={showPassword ? "text" : "password"}
-                        value={decrypted || "••••••••••••"}
+                        value={decrypted ?? maskedPassword}
                         readOnly
                         className="input-glass w-full pr-12 font-mono text-sm"
                       />
                       <motion.button
                         onClick={handleEyeClick}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--aegis-text-muted)] hover:text-[var(--aegis-accent-primary)] transition-colors"
+                        disabled={isDecrypting}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--aegis-text-muted)] hover:text-[var(--aegis-accent-primary)] transition-colors disabled:opacity-60"
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                       >
@@ -203,7 +343,7 @@ export function PasswordCard({ item }: PasswordCardProps) {
                         )}
                       </motion.button>
                     </div>
-                    
+
                     {decrypted && (
                       <motion.button
                         initial={{ scale: 0, opacity: 0 }}
@@ -228,58 +368,6 @@ export function PasswordCard({ item }: PasswordCardProps) {
                     </motion.p>
                   )}
                 </div>
-
-                {/* Username Field */}
-                {item.username && (
-                  <div className="space-y-2">
-                    <label className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] font-semibold">
-                      Username
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={item.username}
-                        readOnly
-                        className="input-glass flex-1 text-sm"
-                      />
-                      <motion.button
-                        onClick={() => handleCopy(item.username!, "Username")}
-                        className="h-11 px-4 rounded-lg bg-[var(--aegis-bg-elevated)] hover:bg-[var(--aegis-accent-primary)] hover:text-[var(--aegis-bg-deep)] transition-all duration-300"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Copy className="w-4 h-4" strokeWidth={2} />
-                      </motion.button>
-                    </div>
-                  </div>
-                )}
-
-                {/* URL Field */}
-                {item.url && (
-                  <div className="space-y-2">
-                    <label className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] font-semibold">
-                      Website
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={item.url}
-                        readOnly
-                        className="input-glass flex-1 text-sm"
-                      />
-                      <motion.a
-                        href={item.url.startsWith("http") ? item.url : `https://${item.url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="h-11 px-4 rounded-lg bg-[var(--aegis-bg-elevated)] hover:bg-[var(--aegis-accent-primary)] hover:text-[var(--aegis-bg-deep)] transition-all duration-300 flex items-center"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <ExternalLink className="w-4 h-4" strokeWidth={2} />
-                      </motion.a>
-                    </div>
-                  </div>
-                )}
               </motion.div>
             </motion.div>
           )}

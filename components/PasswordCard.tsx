@@ -485,13 +485,18 @@ export function PasswordCard({ item, categories = [] }: PasswordCardProps) {
                 <div className="flex items-center justify-end gap-3 pt-2">
                   <motion.button
                     onClick={handleEditClick}
-                    className="h-11 px-4 rounded-lg bg-[var(--aegis-accent-primary)] text-[var(--aegis-bg-deep)] font-medium flex items-center gap-2 hover:shadow-lg transition-all duration-300 disabled:opacity-60"
-                    whileHover={{ scale: 1.04, y: -1 }}
-                    whileTap={{ scale: 0.96 }}
+                    className="group flex items-center gap-2 rounded-xl border border-[var(--aegis-border)] bg-[var(--aegis-bg-card)] px-5 py-2 text-sm font-medium text-[var(--aegis-text-heading)] transition-all duration-300 disabled:opacity-60"
+                    whileHover={{ y: -2, scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
                     disabled={isDecrypting}
+                    style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
                   >
-                    <PencilLine className="w-4 h-4" strokeWidth={2} />
-                    Edit Entry
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--aegis-bg-elevated)] text-[var(--aegis-accent-primary)] transition-transform duration-300 group-hover:rotate-3 group-hover:scale-110">
+                      <PencilLine className="h-4 w-4" strokeWidth={2.1} />
+                    </span>
+                    <span className="bg-gradient-to-r from-[var(--aegis-text-heading)] to-[var(--aegis-accent-primary)] bg-clip-text text-transparent">
+                      Edit Entry
+                    </span>
                   </motion.button>
                 </div>
               </motion.div>

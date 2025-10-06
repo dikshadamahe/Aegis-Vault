@@ -50,6 +50,13 @@ export async function GET(req: Request) {
       passwordCiphertext: true,
       passwordNonce: true,
       encryptedDek: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
       updatedAt: true,
       createdAt: true,
     },

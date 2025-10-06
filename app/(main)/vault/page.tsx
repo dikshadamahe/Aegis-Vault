@@ -2,22 +2,28 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Search, Folder, Lock, Loader2 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PasswordCard } from "@/components/PasswordCard";
 import { AddPasswordModal } from "@/components/AddPasswordModal";
 import { ManageCategoriesModal } from "@/components/ManageCategoriesModal";
+import { useAppStore } from "@/store/app-store";
 
 type VaultItem = {
   id: string;
   websiteName: string;
-  username?: string;
-  url?: string;
+  username?: string | null;
+  email?: string | null;
+  url?: string | null;
   passwordCiphertext: string;
   passwordNonce: string;
-  passwordEncryptedDek?: string;
-  passwordDekNonce?: string;
+  encryptedDek?: string | null;
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
 };
 
 const headerVariants = {
@@ -44,10 +50,10 @@ const listVariants = {
 };
 
 export default function VaultPage() {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
+  const { selectedCategory } = useAppStore();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["vault-items"],
@@ -70,18 +76,26 @@ export default function VaultPage() {
   });
 
   // Filter logic
-  const filteredItems = data?.filter((item) => {
-    const matchesSearch = item.websiteName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.username?.toLowerCase().includes(searchQuery.toLowerCase());
-    // Category filter would need categoryId in the item data
-    return matchesSearch;
-  });
+  const filteredItems = useMemo(() => {
+    if (!data) return [] as VaultItem[];
+    const query = searchQuery.trim().toLowerCase();
+    return data.filter((item) => {
+      const matchesSearch = query
+        ? item.websiteName.toLowerCase().includes(query) ||
+          (item.username?.toLowerCase().includes(query) ?? false) ||
+          (item.email?.toLowerCase().includes(query) ?? false)
+        : true;
+
+      const matchesCategory = selectedCategory
+        ? item.category?.slug === selectedCategory
+        : true;
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [data, searchQuery, selectedCategory]);
 
   return (
-    <DashboardLayout
-      onCategoryFilter={setSelectedCategory}
-      selectedCategory={selectedCategory}
-    >
+    <DashboardLayout>
       {/* Page Header */}
       <motion.div
         variants={headerVariants}
@@ -164,7 +178,7 @@ export default function VaultPage() {
             Please try refreshing the page
           </p>
         </div>
-      ) : filteredItems && filteredItems.length > 0 ? (
+  ) : filteredItems.length > 0 ? (
         <motion.div
           variants={listVariants}
           initial="hidden"

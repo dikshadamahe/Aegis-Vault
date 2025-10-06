@@ -2,21 +2,15 @@
 
 import { AegisSidebar } from "./aegis-sidebar";
 import { motion } from "framer-motion";
-import { useState } from "react";
 
 type AegisLayoutProps = {
   children: React.ReactNode;
-  onCategoryFilter?: (categorySlug: string | null) => void;
-  selectedCategory?: string | null;
 };
 
-export function AegisLayout({ children, onCategoryFilter, selectedCategory }: AegisLayoutProps) {
+export function AegisLayout({ children }: AegisLayoutProps) {
   return (
     <div className="min-h-screen flex bg-[var(--aegis-bg-deep)]">
-      <AegisSidebar 
-        onCategoryFilter={onCategoryFilter}
-        selectedCategory={selectedCategory}
-      />
+      <AegisSidebar />
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

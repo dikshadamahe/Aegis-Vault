@@ -7,22 +7,19 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { categoryIcon } from "@/constants/category-icon";
+import { useAppStore } from "@/store/app-store";
 
 const navItems = [
   { href: "/vault", label: "Vault", icon: Lock },
   { href: "/generator", label: "Generator", icon: Key },
 ];
 
-type SidebarProps = {
-  onCategoryFilter?: (categorySlug: string | null) => void;
-  selectedCategory?: string | null;
-};
-
-export function Sidebar({ onCategoryFilter, selectedCategory }: SidebarProps) {
+export function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
+  const { selectedCategory, setSelectedCategory } = useAppStore();
 
   const { data: categories } = useQuery({
     queryKey: ["categories"],
@@ -41,7 +38,7 @@ export function Sidebar({ onCategoryFilter, selectedCategory }: SidebarProps) {
 
   const handleCategoryClick = (slug: string) => {
     const nextValue = selectedCategory === slug ? null : slug;
-    onCategoryFilter?.(nextValue);
+    setSelectedCategory(nextValue);
 
     if (pathname !== "/vault") {
       const search = new URLSearchParams();

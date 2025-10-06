@@ -7,22 +7,19 @@ import { Shield, Key, LogOut, Lock, ChevronLeft, ChevronRight } from "lucide-rea
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { categoryIcon } from "@/constants/category-icon";
+import { useAppStore } from "@/store/app-store";
 
 const navItems = [
   { href: "/vault", label: "Vault", icon: Lock },
   { href: "/generator", label: "Generator", icon: Key },
 ];
 
-type AegisSidebarProps = {
-  onCategoryFilter?: (categorySlug: string | null) => void;
-  selectedCategory?: string | null;
-};
-
-export function AegisSidebar({ onCategoryFilter, selectedCategory }: AegisSidebarProps) {
+export function AegisSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
   const [isExpanded, setIsExpanded] = useState(false);
+  const { selectedCategory, setSelectedCategory } = useAppStore();
 
   // Fetch categories
   const { data: categories } = useQuery({
@@ -41,8 +38,12 @@ export function AegisSidebar({ onCategoryFilter, selectedCategory }: AegisSideba
   };
 
   const handleCategoryClick = (categorySlug: string) => {
-    if (pathname === "/vault") {
-      onCategoryFilter?.(selectedCategory === categorySlug ? null : categorySlug);
+    const nextValue = selectedCategory === categorySlug ? null : categorySlug;
+    setSelectedCategory(nextValue);
+    if (pathname !== "/vault") {
+      const search = new URLSearchParams();
+      if (nextValue) search.set("category", nextValue);
+      router.push(`/vault${search.toString() ? `?${search.toString()}` : ""}`);
     }
   };
 

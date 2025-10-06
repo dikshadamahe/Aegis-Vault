@@ -2,12 +2,9 @@
 
 import { motion } from "framer-motion";
 import { Sidebar } from "./Sidebar";
-import { useState } from "react";
 
 type DashboardLayoutProps = {
   children: React.ReactNode;
-  onCategoryFilter?: (categorySlug: string | null) => void;
-  selectedCategory?: string | null;
 };
 
 const containerVariants = {
@@ -35,11 +32,7 @@ const itemVariants = {
   },
 };
 
-export function DashboardLayout({ 
-  children, 
-  onCategoryFilter, 
-  selectedCategory 
-}: DashboardLayoutProps) {
+export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div 
       className="min-h-screen flex"
@@ -48,10 +41,7 @@ export function DashboardLayout({
       }}
     >
       {/* Sidebar */}
-      <Sidebar 
-        onCategoryFilter={onCategoryFilter}
-        selectedCategory={selectedCategory}
-      />
+      <Sidebar />
 
       {/* Main Content Area */}
       <motion.main

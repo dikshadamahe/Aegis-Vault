@@ -1,13 +1,14 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Copy, ExternalLink, Shield, Lock } from "lucide-react";
+import { Eye, EyeOff, Copy, ExternalLink, Lock } from "lucide-react";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Favicon, extractDomain } from "./ui/Favicon";
 import PassphraseModal from "./passphrase-modal";
-import { decryptWithEnvelope, decryptSecret } from "@/lib/crypto";
-import { useVault } from "@/providers/VaultProvider";
+import { decryptWithEnvelope, decryptSecret, deriveKeyFromPassphrase } from "@/lib/crypto";
 import { toast } from "sonner";
+import type { Session } from "next-auth";
 
 type PasswordCardProps = {
   item: {
@@ -17,8 +18,7 @@ type PasswordCardProps = {
     url?: string;
     passwordCiphertext: string;
     passwordNonce: string;
-    passwordEncryptedDek?: string;
-    passwordDekNonce?: string;
+    encryptedDek?: string;
   };
 };
 
@@ -28,9 +28,8 @@ export function PasswordCard({ item }: PasswordCardProps) {
   const [decrypted, setDecrypted] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Use vault context for session-based decryption
-  const { isLocked, encryptionKey, unlockVault, resetInactivityTimer } = useVault();
+
+  const { data: session } = useSession();
 
   // Extract domain for favicon using the helper function
   const domain = extractDomain(item.url);
@@ -39,17 +38,15 @@ export function PasswordCard({ item }: PasswordCardProps) {
   const decryptPassword = async (key: Uint8Array) => {
     try {
       setError(null);
-      resetInactivityTimer(); // Reset timer on vault activity
       let password: string;
 
-      if (item.passwordEncryptedDek && item.passwordDekNonce) {
+      if (item.encryptedDek) {
         // Envelope encryption
         password = await decryptWithEnvelope(
           {
             ciphertext: item.passwordCiphertext,
             nonce: item.passwordNonce,
-            encryptedDek: item.passwordEncryptedDek,
-            dekNonce: item.passwordDekNonce,
+            encryptedDek: item.encryptedDek,
           },
           key
         );
@@ -68,8 +65,10 @@ export function PasswordCard({ item }: PasswordCardProps) {
       setShowPassword(true);
       toast.success("Password decrypted");
     } catch (err: any) {
-      setError(err.message || "Failed to decrypt");
-      toast.error("Decryption failed");
+      const message = err?.message || "Failed to decrypt";
+      setError(message);
+      toast.error(message);
+      throw err instanceof Error ? err : new Error(message);
     }
   };
 
@@ -78,27 +77,27 @@ export function PasswordCard({ item }: PasswordCardProps) {
     if (decrypted) {
       // Toggle visibility if already decrypted
       setShowPassword(!showPassword);
-    } else if (isLocked) {
-      // Vault is locked - show passphrase modal
+    } else {
       setIsModalOpen(true);
-    } else if (encryptionKey) {
-      // Vault is unlocked - decrypt immediately
-      await decryptPassword(encryptionKey);
     }
   };
 
-  // Handle successful vault unlock
-  const handleVaultUnlocked = async () => {
-    setIsModalOpen(false);
-    // After unlock, the encryptionKey will be available, decrypt now
-    if (encryptionKey) {
-      await decryptPassword(encryptionKey);
+  const handlePassphraseSubmit = async (passphrase: string) => {
+  const saltBase64 = getSessionSalt(session);
+    if (!saltBase64) {
+      const error = new Error("Missing encryption salt. Please log out and sign back in.");
+      toast.error(error.message);
+      throw error;
     }
+
+    const saltBytes = base64ToUint8(saltBase64);
+    const { key } = await deriveKeyFromPassphrase(passphrase, saltBytes);
+    await decryptPassword(key);
+    setIsModalOpen(false);
   };
 
   const handleCopy = async (text: string, label: string) => {
     try {
-      resetInactivityTimer(); // Reset timer on vault activity
       await navigator.clipboard.writeText(text);
       toast.success(`${label} copied to clipboard`);
     } catch {
@@ -290,10 +289,37 @@ export function PasswordCard({ item }: PasswordCardProps) {
       {/* Passphrase Modal - Only shown when vault is locked */}
       {isModalOpen && (
         <PassphraseModal
-          onUnlocked={handleVaultUnlocked}
+          onSubmit={handlePassphraseSubmit}
+          title="Enter Passphrase"
+          description="Provide your master passphrase to decrypt this password."
+          submitLabel="Decrypt"
           onCancel={() => setIsModalOpen(false)}
         />
       )}
     </>
   );
+}
+
+function getSessionSalt(session: Session | null): string | undefined {
+  if (!session) return undefined;
+  const root = (session as unknown as { encryptionSalt?: string }).encryptionSalt;
+  const nested = (session.user as { encryptionSalt?: string } | undefined)?.encryptionSalt;
+  return root ?? nested ?? undefined;
+}
+
+function base64ToUint8(value: string): Uint8Array {
+  if (typeof window !== "undefined" && typeof window.atob === "function") {
+    const binary = window.atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  if (typeof Buffer !== "undefined") {
+    return new Uint8Array(Buffer.from(value, "base64"));
+  }
+
+  throw new Error("Base64 decoding is not supported in this environment");
 }

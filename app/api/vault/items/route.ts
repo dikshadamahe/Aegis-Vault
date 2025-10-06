@@ -11,7 +11,6 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = new URL(req.url);
-  const category = url.searchParams.get("category") || undefined;
   const search = url.searchParams.get("search") || undefined;
   const pageParam = url.searchParams.get("page");
   const pageSizeParam = url.searchParams.get("pageSize");
@@ -29,22 +28,15 @@ export async function GET(req: Request) {
     resolvedUserId = user.id;
   }
 
-  // Build query with direct ids to avoid $lookup when filtering by category slug
-  let categoryId: string | undefined;
-  if (category) {
-    const cat = await prisma.category.findFirst({
-      where: { userId: resolvedUserId, slug: category },
-      select: { id: true },
-    });
-    if (!cat) {
-      return NextResponse.json({ items: [], page, pageSize, total: 0, hasPrev: page > 1, hasNext: false });
-    }
-    categoryId = cat.id;
-  }
-
   const where: any = { userId: resolvedUserId };
-  if (categoryId) where.categoryId = categoryId;
-  if (search) where.websiteName = { contains: search.toLowerCase() };
+  if (search) {
+    const lookup = search.toLowerCase();
+    where.OR = [
+      { websiteName: { contains: lookup, mode: "insensitive" } },
+      { username: { contains: lookup, mode: "insensitive" } },
+      { email: { contains: lookup, mode: "insensitive" } },
+    ];
+  }
 
   const total = await prisma.password.count({ where });
   const items = await prisma.password.findMany({
@@ -57,16 +49,9 @@ export async function GET(req: Request) {
       url: true,
       passwordCiphertext: true,
       passwordNonce: true,
-      passwordSalt: true,
-      passwordEncryptedDek: true,
-      passwordDekNonce: true,
-      notesCiphertext: true,
-      notesNonce: true,
-      notesEncryptedDek: true,
-      notesDekNonce: true,
+      encryptedDek: true,
       updatedAt: true,
       createdAt: true,
-      category: { select: { id: true, name: true, slug: true } },
     },
     orderBy: [
       { updatedAt: "desc" },
@@ -120,23 +105,13 @@ export async function POST(req: Request) {
   const created = await prisma.password.create({
     data: {
       userId: resolvedUserId,
-      categoryId: data.category,
-      websiteName: data.websiteName.toLowerCase(),
-      email: data.email ? data.email.toLowerCase() : undefined,
-      username: data.username ? data.username.toLowerCase() : undefined,
-      url: data.url ? data.url.toLowerCase() : undefined,
-      password: "",
+      websiteName: data.websiteName,
+      email: data.email || undefined,
+      username: data.username || undefined,
+      url: data.url || undefined,
       passwordCiphertext: data.passwordCiphertext,
       passwordNonce: data.passwordNonce,
-      passwordSalt: data.passwordSalt,
-      // Envelope encryption fields for password
-      passwordEncryptedDek: (data as any).passwordEncryptedDek || undefined,
-      passwordDekNonce: (data as any).passwordDekNonce || undefined,
-      // Envelope encryption fields for notes
-      notesCiphertext: data.notesCiphertext || undefined,
-      notesNonce: data.notesNonce || undefined,
-      notesEncryptedDek: (data as any).notesEncryptedDek || undefined,
-      notesDekNonce: (data as any).notesDekNonce || undefined,
+      encryptedDek: data.encryptedDek,
     },
     select: {
       id: true,
@@ -146,16 +121,9 @@ export async function POST(req: Request) {
       url: true,
       passwordCiphertext: true,
       passwordNonce: true,
-      passwordSalt: true,
-      passwordEncryptedDek: true,
-      passwordDekNonce: true,
-      notesCiphertext: true,
-      notesNonce: true,
-      notesEncryptedDek: true,
-      notesDekNonce: true,
+      encryptedDek: true,
       createdAt: true,
       updatedAt: true,
-      category: { select: { id: true, name: true, slug: true } },
     },
   });
 

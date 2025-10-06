@@ -1,17 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { useVault } from "@/providers/VaultProvider";
 import { motion } from "framer-motion";
 import { Lock, Loader2 } from "lucide-react";
 
 type PassphraseModalProps = {
-  onUnlocked: () => void | Promise<void>;
+  onSubmit: (passphrase: string) => Promise<void> | void;
   onCancel: () => void;
+  title?: string;
+  description?: string;
+  submitLabel?: string;
 };
 
-export default function PassphraseModal({ onUnlocked, onCancel }: PassphraseModalProps) {
-  const { unlockVault } = useVault();
+export default function PassphraseModal({
+  onSubmit,
+  onCancel,
+  title = "Unlock Vault",
+  description = "Enter your master passphrase to continue",
+  submitLabel = "Unlock",
+}: PassphraseModalProps) {
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,16 +26,15 @@ export default function PassphraseModal({ onUnlocked, onCancel }: PassphraseModa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!value.trim() || loading) return;
-    
+
     setLoading(true);
     setError("");
-    
+
     try {
-      await unlockVault(value);
+      await onSubmit(value.trim());
       setValue("");
-      await onUnlocked();
     } catch (err: any) {
-      setError("Incorrect passphrase. Please try again.");
+      setError(err?.message || "Incorrect passphrase. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -65,10 +71,10 @@ export default function PassphraseModal({ onUnlocked, onCancel }: PassphraseModa
           </div>
           
           <h2 className="text-center text-2xl font-bold mb-2 text-[var(--aegis-text-heading)]">
-            Unlock Vault
+            {title}
           </h2>
           <p className="text-center text-sm text-[var(--aegis-text-muted)] mb-6">
-            Enter your master passphrase to access your passwords
+            {description}
           </p>
           
           <div className="space-y-4">
@@ -117,10 +123,10 @@ export default function PassphraseModal({ onUnlocked, onCancel }: PassphraseModa
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
-                    Unlocking...
+                    {submitLabel.endsWith("...") ? submitLabel : `${submitLabel}...`}
                   </>
                 ) : (
-                  "Unlock"
+                  submitLabel
                 )}
               </motion.button>
             </div>

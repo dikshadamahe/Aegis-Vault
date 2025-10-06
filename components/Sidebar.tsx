@@ -1,51 +1,25 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Lock, Key, Plus, Settings, ChevronLeft, ChevronRight, LogOut, LockKeyhole } from "lucide-react";
+import { Shield, Lock, Key, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { useQuery } from "@tanstack/react-query";
-import { categoryIcon } from "@/constants/category-icon";
-import { useVault } from "@/providers/VaultProvider";
 
 const navItems = [
   { href: "/vault", label: "Vault", icon: Lock },
   { href: "/generator", label: "Generator", icon: Key },
 ];
 
-type SidebarProps = {
-  onCategoryFilter?: (categorySlug: string | null) => void;
-  selectedCategory?: string | null;
-};
-
-export function Sidebar({ onCategoryFilter, selectedCategory }: SidebarProps) {
+export function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
-  const { isLocked, lockVault } = useVault();
-
-  // Fetch categories with icons
-  const { data: categories } = useQuery({
-    queryKey: ["categories"],
-    queryFn: async () => {
-      const res = await fetch("/api/vault/categories");
-      if (!res.ok) throw new Error("Failed to fetch categories");
-      const json = await res.json();
-      return json.categories as Array<{ id: string; name: string; slug: string }>;
-    },
-  });
 
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.push("/sign-in");
-  };
-
-  const handleCategoryClick = (categorySlug: string) => {
-    if (pathname === "/vault") {
-      onCategoryFilter?.(selectedCategory === categorySlug ? null : categorySlug);
-    }
   };
 
   return (
@@ -171,105 +145,11 @@ export function Sidebar({ onCategoryFilter, selectedCategory }: SidebarProps) {
         })}
       </nav>
 
-      {/* Divider */}
-      {categories && categories.length > 0 && (
-        <motion.div 
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-          className="h-px bg-[var(--aegis-border)] mb-6 mx-2"
-          style={{ transformOrigin: "left" }}
-        />
-      )}
-
-      {/* Categories Section */}
-      {categories && categories.length > 0 && (
-        <div className="flex-1 overflow-y-auto scrollbar-thin space-y-1">
-          {isExpanded && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] mb-3 px-4 font-semibold"
-            >
-              Categories
-            </motion.p>
-          )}
-          
-          {categories.map((category, idx) => {
-            const Icon = categoryIcon[category.slug] || Shield;
-            const isSelected = selectedCategory === category.slug;
-            
-            return (
-              <motion.button
-                key={category.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ 
-                  duration: 0.4, 
-                  delay: 0.4 + (0.05 * idx),
-                  ease: [0.16, 1, 0.3, 1]
-                }}
-                onClick={() => handleCategoryClick(category.slug)}
-                className={`
-                  w-full h-11 rounded-lg flex items-center gap-4 px-4
-                  transition-all duration-300
-                  ${isSelected
-                    ? "bg-[var(--aegis-bg-elevated)] border border-[var(--aegis-accent-primary)] text-[var(--aegis-accent-primary)]"
-                    : "text-[var(--aegis-text-body)] hover:bg-[var(--aegis-bg-card)] hover:text-[var(--aegis-text-heading)]"
-                  }
-                `}
-                whileHover={{ x: 4, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={2} />
-                
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="text-sm font-medium tracking-tight whitespace-nowrap text-left flex-1"
-                    >
-                      {category.name}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-            );
-          })}
-        </div>
-      )}
+      {/* Spacer */}
+      <div className="flex-1" />
 
       {/* Bottom Controls - Fixed alignment */}
       <div className="mt-auto pt-6 flex flex-col gap-2">
-        {/* Lock Vault Button */}
-        {!isLocked && (
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            onClick={lockVault}
-            className="w-full h-11 rounded-lg flex items-center gap-3 px-4 text-[var(--aegis-text-body)] hover:bg-[var(--aegis-accent-primary)]/10 hover:text-[var(--aegis-accent-primary)] transition-all duration-300 border border-[var(--aegis-border)] hover:border-[var(--aegis-accent-primary)]"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <LockKeyhole className="w-5 h-5 flex-shrink-0" strokeWidth={2} />
-            <AnimatePresence>
-              {isExpanded && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-sm font-medium tracking-tight"
-                >
-                  Lock Vault
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
-        )}
-        
         {/* Collapse Toggle - Always at bottom left */}
         <motion.button
           onClick={() => setIsExpanded(!isExpanded)}

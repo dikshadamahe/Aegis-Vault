@@ -127,7 +127,7 @@ const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60, // 60 minutes; cookie converted to session-only via cookie config below
+    maxAge: 15 * 60,
     updateAge: 0,
   },
   cookies: {
@@ -138,7 +138,6 @@ const authOptions: NextAuthOptions = {
         sameSite: "lax",
         path: "/",
         secure: isProduction,
-        expires: undefined, // ensure browser treats this as a session cookie
       },
     },
   },

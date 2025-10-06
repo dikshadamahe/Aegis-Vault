@@ -138,6 +138,7 @@ const authOptions: NextAuthOptions = {
         sameSite: "lax",
         path: "/",
         secure: isProduction,
+        expires: undefined, // ensure browser treats this as a session cookie
       },
     },
   },

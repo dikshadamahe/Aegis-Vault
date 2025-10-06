@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Shield, Loader2 } from "lucide-react";
+import { X, Plus, Shield, Loader2, Eye, EyeOff } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,6 +33,7 @@ type AddPasswordModalProps = {
 export function AddPasswordModal({ isOpen, onClose, categories: categoriesProp = [] }: AddPasswordModalProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const [seedTriggered, setSeedTriggered] = useState(false);
@@ -301,12 +302,23 @@ export function AddPasswordModal({ isOpen, onClose, categories: categoriesProp =
                   <label className="text-xs uppercase tracking-wider text-[var(--aegis-text-muted)] font-semibold">
                     Password *
                   </label>
-                  <input
-                    {...register("password")}
-                    type="password"
-                    placeholder="Enter password"
-                    className="input-glass w-full font-mono"
-                  />
+                  <div className="relative">
+                    <input
+                      {...register("password")}
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter password"
+                      className="input-glass w-full font-mono pr-12"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute inset-y-0 right-3 flex items-center text-[var(--aegis-text-muted)] hover:text-[var(--aegis-accent-teal)] transition-colors disabled:opacity-60"
+                      disabled={isSubmitting}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                   {errors.password && (
                     <p className="text-xs text-red-400">{errors.password.message}</p>
                   )}

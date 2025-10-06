@@ -8,7 +8,14 @@ export const encryptedVaultItemSchema = z.object({
   // encrypted fields
   passwordCiphertext: z.string().min(1),
   passwordNonce: z.string().min(1),
-  encryptedDek: z.string().min(1),
+  passwordEncryptedDek: z.string().min(1),
+  passwordDekNonce: z.string().min(1),
+  passwordSalt: z.string().min(1).optional(),
+  notesCiphertext: z.string().min(1).optional(),
+  notesNonce: z.string().min(1).optional(),
+  notesEncryptedDek: z.string().min(1).optional(),
+  notesDekNonce: z.string().min(1).optional(),
+  categoryId: z.string().optional(),
 });
 
 export type TEncryptedVaultItem = z.infer<typeof encryptedVaultItemSchema>;

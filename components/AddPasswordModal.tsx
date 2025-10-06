@@ -8,9 +8,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import PassphraseModal from "./passphrase-modal";
+import AccountPasswordModal from "./account-password-modal";
 import { encryptWithEnvelope } from "@/lib/crypto";
-import { useVault } from "@/providers/VaultProvider";
+import { useSession } from "next-auth/react";
 
 const passwordSchema = z.object({
   websiteName: z.string().min(1, "Website name is required"),
@@ -31,10 +31,10 @@ type AddPasswordModalProps = {
 };
 
 export function AddPasswordModal({ isOpen, onClose, categories = [] }: AddPasswordModalProps) {
-  const [isPassphraseModalOpen, setIsPassphraseModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
-  const { isLocked, encryptionKey, resetInactivityTimer } = useVault();
+  const { data: session } = useSession();
 
   const {
     register,
@@ -46,17 +46,20 @@ export function AddPasswordModal({ isOpen, onClose, categories = [] }: AddPasswo
     resolver: zodResolver(passwordSchema),
   });
 
-  const handleKeyDerived = async (mek: Uint8Array) => {
+  const handleAuthenticatedKey = async (mek: Uint8Array) => {
     try {
       setIsSubmitting(true);
-      resetInactivityTimer(); // Reset timer on vault activity
       const formData = getValues();
 
       // Encrypt password with envelope encryption (MEK encrypts auto-generated DEK)
-      const { ciphertext, nonce, encryptedDek, dekNonce } = await encryptWithEnvelope(
-        formData.password,
-        mek
-      );
+      const passwordPayload = await encryptWithEnvelope(formData.password, mek);
+      const notesPayload = formData.notes && formData.notes.trim()
+        ? await encryptWithEnvelope(formData.notes.trim(), mek)
+        : null;
+
+      const encryptionSalt = ((session as any)?.encryptionSalt ?? (session?.user as any)?.encryptionSalt) as
+        | string
+        | undefined;
 
       // Submit to API
       const res = await fetch("/api/vault/items", {
@@ -67,12 +70,16 @@ export function AddPasswordModal({ isOpen, onClose, categories = [] }: AddPasswo
           url: formData.url || undefined,
           username: formData.username || undefined,
           email: formData.email || undefined,
-          passwordCiphertext: ciphertext,
-          passwordNonce: nonce,
-          passwordEncryptedDek: encryptedDek,
-          passwordDekNonce: dekNonce,
+          passwordCiphertext: passwordPayload.ciphertext,
+          passwordNonce: passwordPayload.nonce,
+          passwordEncryptedDek: passwordPayload.encryptedDek,
+          passwordDekNonce: passwordPayload.dekNonce,
+          passwordSalt: encryptionSalt,
           categoryId: formData.categoryId || undefined,
-          notes: formData.notes || undefined,
+          notesCiphertext: notesPayload?.ciphertext,
+          notesNonce: notesPayload?.nonce,
+          notesEncryptedDek: notesPayload?.encryptedDek,
+          notesDekNonce: notesPayload?.dekNonce,
         }),
       });
 
@@ -82,7 +89,7 @@ export function AddPasswordModal({ isOpen, onClose, categories = [] }: AddPasswo
       queryClient.invalidateQueries({ queryKey: ["vault-items"] });
       reset();
       onClose();
-      setIsPassphraseModalOpen(false);
+      setIsAuthModalOpen(false);
     } catch (err: any) {
       toast.error(err.message || "Failed to save password");
     } finally {
@@ -91,21 +98,8 @@ export function AddPasswordModal({ isOpen, onClose, categories = [] }: AddPasswo
   };
 
   const onSubmit = async () => {
-    if (isLocked) {
-      // Vault is locked - show passphrase modal first
-      setIsPassphraseModalOpen(true);
-    } else if (encryptionKey) {
-      // Vault is unlocked - encrypt and save immediately
-      await handleKeyDerived(encryptionKey);
-    }
-  };
-
-  const handleVaultUnlocked = async () => {
-    setIsPassphraseModalOpen(false);
-    // After unlock, encrypt with the session key
-    if (encryptionKey) {
-      await handleKeyDerived(encryptionKey);
-    }
+    if (isSubmitting) return;
+    setIsAuthModalOpen(true);
   };
 
   if (!isOpen) return null;
@@ -324,16 +318,18 @@ export function AddPasswordModal({ isOpen, onClose, categories = [] }: AddPasswo
         )}
       </AnimatePresence>
 
-      {/* Passphrase Modal - Only shown when vault is locked */}
-      {isPassphraseModalOpen && (
-        <PassphraseModal
-          onUnlocked={handleVaultUnlocked}
-          onCancel={() => {
-            setIsPassphraseModalOpen(false);
-            setIsSubmitting(false);
-          }}
-        />
-      )}
+      <AccountPasswordModal
+        open={isAuthModalOpen}
+        submitLabel="Encrypt"
+        title="Encrypt Password"
+        description="Confirm with your account password to encrypt and store this entry."
+        onAuthenticated={handleAuthenticatedKey}
+        onCancel={() => {
+          if (!isSubmitting) {
+            setIsAuthModalOpen(false);
+          }
+        }}
+      />
     </>
   );
 }

@@ -7,4 +7,4 @@ export { AddPasswordModal } from "./AddPasswordModal";
 export { ManageCategoriesModal } from "./ManageCategoriesModal";
 export { DashboardLayout } from "./DashboardLayout";
 export { default as Favicon } from "./Favicon";
-export { default as PassphraseModal } from "./passphrase-modal";
+export { default as AccountPasswordModal } from "./account-password-modal";

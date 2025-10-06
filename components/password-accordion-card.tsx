@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Eye, EyeOff, Copy, Edit, Trash2, ExternalLink, Globe } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import PassphraseModal from "./passphrase-modal";
+import AccountPasswordModal from "./account-password-modal";
 import { decryptWithEnvelope, decryptSecret } from "@/lib/crypto";
 import Favicon from "./Favicon";
 
@@ -19,7 +19,6 @@ type PasswordAccordionCardProps = {
   // Encryption data
   passwordCiphertext: string;
   passwordNonce: string;
-  passwordSalt: string;
   passwordEncryptedDek?: string;
   passwordDekNonce?: string;
   onEdit: () => void;
@@ -36,7 +35,6 @@ export function PasswordAccordionCard({
   category,
   passwordCiphertext,
   passwordNonce,
-  passwordSalt,
   passwordEncryptedDek,
   passwordDekNonce,
   onEdit,
@@ -98,7 +96,7 @@ export function PasswordAccordionCard({
 
   const handleTogglePassword = () => {
     if (!showPassword && !password) {
-      // Open modal to get passphrase
+      // Open modal to authenticate with the account password
       setIsModalOpen(true);
     } else {
       setShowPassword(!showPassword);
@@ -248,7 +246,7 @@ export function PasswordAccordionCard({
                   </div>
                   {error && (
                     <p className="text-xs text-red-400 mt-1">
-                      Try re-entering your passphrase
+                      Try re-entering your account password
                     </p>
                   )}
                 </div>
@@ -290,11 +288,13 @@ export function PasswordAccordionCard({
         )}
       </AnimatePresence>
       
-      {/* Passphrase Modal - Stateless decryption */}
-      <PassphraseModal
+  {/* Account password modal - Stateless decryption */}
+      <AccountPasswordModal
         open={isModalOpen}
-        reason="Enter passphrase to decrypt"
-        onKeyDerived={performDecryption}
+        submitLabel="Decrypt"
+        title="Decrypt Password"
+        description="Enter your account password to decrypt this entry."
+        onAuthenticated={performDecryption}
         onCancel={() => setIsModalOpen(false)}
       />
     </motion.div>

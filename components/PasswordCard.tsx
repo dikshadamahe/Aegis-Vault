@@ -3,12 +3,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Copy, ExternalLink, Lock } from "lucide-react";
 import { useState } from "react";
-import { useSession } from "next-auth/react";
 import { Favicon } from "./ui/Favicon";
-import PassphraseModal from "./passphrase-modal";
-import { decryptWithEnvelope, decryptSecret, deriveKeyFromPassphrase } from "@/lib/crypto";
+import AccountPasswordModal from "./account-password-modal";
+import { decryptWithEnvelope, decryptSecret } from "@/lib/crypto";
 import { toast } from "sonner";
-import type { Session } from "next-auth";
 import { categoryIcon } from "@/constants/category-icon";
 
 type PasswordCardProps = {
@@ -20,7 +18,8 @@ type PasswordCardProps = {
     url?: string;
     passwordCiphertext: string;
     passwordNonce: string;
-    encryptedDek?: string;
+    passwordEncryptedDek?: string;
+    passwordDekNonce?: string;
     notesCiphertext?: string | null;
     notesNonce?: string | null;
     notesEncryptedDek?: string | null;
@@ -42,8 +41,6 @@ export function PasswordCard({ item }: PasswordCardProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isDecrypting, setIsDecrypting] = useState(false);
 
-  const { data: session } = useSession();
-
   const normalizedUrl = normalizeUrl(item.url);
   const categorySlug = item.category?.slug;
   const CategoryGlyph = categorySlug ? categoryIcon[categorySlug] : undefined;
@@ -59,18 +56,19 @@ export function PasswordCard({ item }: PasswordCardProps) {
       setError(null);
       let password: string;
 
-      if (item.encryptedDek) {
-        // Envelope encryption
+      if (item.passwordEncryptedDek && item.passwordDekNonce) {
+        // Envelope encryption (current architecture)
         password = await decryptWithEnvelope(
           {
             ciphertext: item.passwordCiphertext,
             nonce: item.passwordNonce,
-            encryptedDek: item.encryptedDek,
+            encryptedDek: item.passwordEncryptedDek,
+            dekNonce: item.passwordDekNonce,
           },
           key
         );
-      } else {
-        // Legacy direct encryption
+      } else if (item.passwordCiphertext && item.passwordNonce) {
+        // Legacy fallback (no encrypted DEK stored)
         password = await decryptSecret(
           {
             ciphertext: item.passwordCiphertext,
@@ -78,6 +76,8 @@ export function PasswordCard({ item }: PasswordCardProps) {
           },
           key
         );
+      } else {
+        throw new Error("Encrypted password payload is incomplete.");
       }
 
       setDecrypted(password);
@@ -134,17 +134,9 @@ export function PasswordCard({ item }: PasswordCardProps) {
     }
   };
 
-  const handlePassphraseSubmit = async (passphrase: string) => {
-  const saltBase64 = getSessionSalt(session);
-    if (!saltBase64) {
-      const error = new Error("Missing encryption salt. Please log out and sign back in.");
-      toast.error(error.message);
-      throw error;
-    }
-
-    const saltBytes = base64ToUint8(saltBase64);
-    const { key } = await deriveKeyFromPassphrase(passphrase, saltBytes);
+  const handleAccountPasswordSuccess = async (key: Uint8Array) => {
     await decryptSecrets(key);
+    setIsModalOpen(false);
   };
 
   const handleCopy = async (text: string | null | undefined, label: string) => {
@@ -390,24 +382,16 @@ export function PasswordCard({ item }: PasswordCardProps) {
       </motion.div>
 
       {/* Passphrase Modal - Only shown when vault is locked */}
-      {isModalOpen && (
-        <PassphraseModal
-          onSubmit={handlePassphraseSubmit}
-          title="Enter Passphrase"
-          description="Provide your master passphrase to decrypt this password."
-          submitLabel="Decrypt"
-          onCancel={() => setIsModalOpen(false)}
-        />
-      )}
+      <AccountPasswordModal
+        open={isModalOpen}
+        submitLabel="Decrypt"
+        title="Decrypt Password"
+        description="Enter your account password to decrypt this entry."
+        onAuthenticated={handleAccountPasswordSuccess}
+        onCancel={() => setIsModalOpen(false)}
+      />
     </>
   );
-}
-
-function getSessionSalt(session: Session | null): string | undefined {
-  if (!session) return undefined;
-  const root = (session as unknown as { encryptionSalt?: string }).encryptionSalt;
-  const nested = (session.user as { encryptionSalt?: string } | undefined)?.encryptionSalt;
-  return root ?? nested ?? undefined;
 }
 
 function normalizeUrl(rawUrl: string | null | undefined): { href: string; hostname: string } | undefined {
@@ -421,21 +405,4 @@ function normalizeUrl(rawUrl: string | null | undefined): { href: string; hostna
     console.warn("Failed to normalize URL", rawUrl, error);
     return undefined;
   }
-}
-
-function base64ToUint8(value: string): Uint8Array {
-  if (typeof window !== "undefined" && typeof window.atob === "function") {
-    const binary = window.atob(value);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-  }
-
-  if (typeof Buffer !== "undefined") {
-    return new Uint8Array(Buffer.from(value, "base64"));
-  }
-
-  throw new Error("Base64 decoding is not supported in this environment");
 }

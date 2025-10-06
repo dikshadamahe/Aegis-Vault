@@ -91,11 +91,14 @@ model Password {
   url                String?
 
   // Client-side encryption fields
-  passwordCiphertext String?
-  passwordNonce      String?
-  notesCiphertext    String?
-  notesNonce         String?
-  encryptedDek       String?   // The encrypted Data Encryption Key (DEK)
+  passwordCiphertext   String?
+  passwordNonce        String?
+  passwordEncryptedDek String?
+  passwordDekNonce     String?
+  notesCiphertext      String?
+  notesNonce           String?
+  notesEncryptedDek    String?
+  notesDekNonce        String?
 
   lastUsedAt         DateTime?
   createdAt          DateTime  @default(now())
@@ -104,7 +107,7 @@ model Password {
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category           Category  @relation(fields: [categoryId], references: [id])
 
-  // Deprecated fields to be removed later
+  // Legacy fields retained for backwards compatibility
   password           String?   @default("")
   passwordSalt       String?
 

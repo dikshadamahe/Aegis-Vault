@@ -18,7 +18,12 @@ type VaultItem = {
   url?: string | null;
   passwordCiphertext: string;
   passwordNonce: string;
-  encryptedDek?: string | null;
+  passwordEncryptedDek?: string | null;
+  passwordDekNonce?: string | null;
+  notesCiphertext?: string | null;
+  notesNonce?: string | null;
+  notesEncryptedDek?: string | null;
+  notesDekNonce?: string | null;
   category?: {
     id: string;
     name: string;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import Favicon from "./Favicon";
-import PassphraseModal from "./passphrase-modal";
+import AccountPasswordModal from "./account-password-modal";
 import { decryptWithEnvelope, decryptSecret } from "@/lib/crypto";
 
 type VaultItem = {
@@ -25,7 +25,7 @@ export default function PasswordCard({ item }: { item: VaultItem }) {
 
   const domain = item.url ? getDomain(item.url) : null;
 
-  const handleKeyDerived = async (key: Uint8Array) => {
+  const handleAuthenticatedKey = async (key: Uint8Array) => {
     try {
       let plain: string;
       if (item.passwordEncryptedDek && item.passwordDekNonce) {
@@ -50,7 +50,7 @@ export default function PasswordCard({ item }: { item: VaultItem }) {
       setDecrypted(plain);
       setError(null);
     } catch (e) {
-      setError("Failed to decrypt. Check your passphrase.");
+      setError("Failed to decrypt. Check your account password.");
     } finally {
       setIsModalOpen(false);
     }
@@ -83,10 +83,14 @@ export default function PasswordCard({ item }: { item: VaultItem }) {
       >
         {decrypted ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
       </button>
-
-      {isModalOpen && (
-        <PassphraseModal onKeyDerived={handleKeyDerived} onCancel={() => setIsModalOpen(false)} />
-      )}
+      <AccountPasswordModal
+        open={isModalOpen}
+        submitLabel="Decrypt"
+        title="Decrypt Password"
+        description="Enter your account password to decrypt this entry."
+        onAuthenticated={handleAuthenticatedKey}
+        onCancel={() => setIsModalOpen(false)}
+      />
     </div>
   );
 }

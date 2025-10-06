@@ -14,13 +14,14 @@ type PasswordCardProps = {
   item: {
     id: string;
     websiteName: string;
-    username?: string;
+    username?: string | null;
     email?: string | null;
-    url?: string;
+    url?: string | null;
     passwordCiphertext: string;
     passwordNonce: string;
-  passwordEncryptedDek?: string | null;
-  passwordDekNonce?: string | null;
+    passwordEncryptedDek?: string | null;
+    passwordDekNonce?: string | null;
+    passwordSalt?: string | null;
     notesCiphertext?: string | null;
     notesNonce?: string | null;
     notesEncryptedDek?: string | null;
@@ -224,24 +225,34 @@ export function PasswordCard({ item, categories = [] }: PasswordCardProps) {
     setDecryptedNotes(payload.notes);
     setShowPassword(true);
     setLocalItem((prev) => {
-      const nextCategory = payload.categoryId
-        ? categories.find((category) => category.id === payload.categoryId) || (prev.category?.id === payload.categoryId ? prev.category : null)
-        : null;
+      const nextCategory = (() => {
+        if (payload.categoryId === undefined) {
+          return prev.category ?? null;
+        }
+        if (!payload.categoryId) {
+          return null;
+        }
+        const lookup = categories.find((category) => category.id === payload.categoryId);
+        if (lookup) {
+          return {
+            id: lookup.id,
+            name: lookup.name,
+            slug: lookup.slug ?? prev.category?.slug ?? lookup.name.toLowerCase(),
+          };
+        }
+        if (prev.category?.id === payload.categoryId) {
+          return prev.category;
+        }
+        return null;
+      })();
+
       return {
         ...prev,
         websiteName: payload.websiteName,
-        username: payload.username ?? null,
-        email: payload.email ?? null,
-        url: payload.url ?? null,
-        category: payload.categoryId
-          ? nextCategory
-            ? {
-                id: nextCategory.id,
-                name: nextCategory.name,
-                slug: nextCategory.slug ?? prev.category?.slug ?? nextCategory.name.toLowerCase(),
-              }
-            : null
-          : null,
+        username: payload.username ?? (payload.username === undefined ? prev.username ?? null : null),
+        email: payload.email ?? (payload.email === undefined ? prev.email ?? null : null),
+        url: payload.url ?? (payload.url === undefined ? prev.url ?? null : null),
+        category: nextCategory,
         passwordCiphertext: payload.encrypted?.passwordCiphertext ?? prev.passwordCiphertext,
         passwordNonce: payload.encrypted?.passwordNonce ?? prev.passwordNonce,
         passwordEncryptedDek: payload.encrypted?.passwordEncryptedDek ?? prev.passwordEncryptedDek,

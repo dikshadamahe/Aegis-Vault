@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/prisma/db";
 import bcrypt from "bcrypt";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 
 const payloadSchema = z.object({
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
   if (!user) {
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(defaultPassword, salt);
-    const encryptionSalt = Buffer.from(crypto.randomBytes(16)).toString("base64");
+  const encryptionSalt = Buffer.from(randomBytes(16)).toString("base64");
     user = await prisma.user.create({ data: { email, name: defaultUsername, hashedPassword, encryptionSalt } });
   }
 

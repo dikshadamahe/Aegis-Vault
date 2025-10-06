@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import authOptions from "@/lib/auth-options";
 import prisma from "@/prisma/db";
+import { Prisma } from "@prisma/client";
 import { encryptedVaultItemSchema, assertNoPlaintext } from "@/lib/validators/vault-encrypted-schema";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
@@ -115,32 +116,35 @@ export async function POST(req: Request) {
     resolvedUserId = user.id;
   }
 
-  const created = await prisma.password.create({
-    data: {
-      websiteName: data.websiteName,
-      email: data.email || undefined,
-      username: data.username || undefined,
-      url: data.url || undefined,
-      passwordCiphertext: data.passwordCiphertext,
-      passwordNonce: data.passwordNonce,
-      passwordEncryptedDek: data.passwordEncryptedDek,
-      passwordDekNonce: data.passwordDekNonce,
-      passwordSalt: data.passwordSalt || undefined,
-      notesCiphertext: data.notesCiphertext || undefined,
-      notesNonce: data.notesNonce || undefined,
-      notesEncryptedDek: data.notesEncryptedDek || undefined,
-      notesDekNonce: data.notesDekNonce || undefined,
-      user: {
-        connect: { id: resolvedUserId },
-      },
-      ...(data.categoryId
-        ? {
-            category: {
-              connect: { id: data.categoryId },
-            },
-          }
-        : {}),
+  const createData: Prisma.PasswordCreateInput = {
+    password: "",
+    websiteName: data.websiteName,
+    email: data.email ?? null,
+    username: data.username ?? null,
+    url: data.url ?? null,
+    passwordCiphertext: data.passwordCiphertext,
+    passwordNonce: data.passwordNonce,
+    passwordEncryptedDek: data.passwordEncryptedDek,
+    passwordDekNonce: data.passwordDekNonce,
+    passwordSalt: data.passwordSalt ?? null,
+    notesCiphertext: data.notesCiphertext ?? null,
+    notesNonce: data.notesNonce ?? null,
+    notesEncryptedDek: data.notesEncryptedDek ?? null,
+    notesDekNonce: data.notesDekNonce ?? null,
+    user: {
+      connect: { id: resolvedUserId },
     },
+    category: undefined,
+  };
+
+  if (data.categoryId) {
+    createData.category = {
+      connect: { id: data.categoryId },
+    };
+  }
+
+  const created = await prisma.password.create({
+    data: createData,
     select: {
       id: true,
       websiteName: true,

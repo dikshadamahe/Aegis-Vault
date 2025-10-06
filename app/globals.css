@@ -1,8 +1,9 @@
+/* stylelint-disable at-rule-no-unknown */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 @layer base {
   :root {
@@ -42,25 +43,83 @@
 
 @layer base {
   * {
-    @apply border-[var(--aegis-border)];
+    border-color: var(--aegis-border);
   }
   
   body {
-    @apply font-inter antialiased;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     background: var(--aegis-bg-deep);
     color: var(--aegis-text-body);
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply text-[var(--aegis-text-heading)] font-semibold;
+    color: var(--aegis-text-heading);
+    font-weight: 600;
   }
   
-  h1 { @apply text-4xl md:text-5xl; }
-  h2 { @apply text-3xl md:text-4xl; }
-  h3 { @apply text-2xl md:text-3xl; }
-  h4 { @apply text-xl md:text-2xl; }
-  h5 { @apply text-lg md:text-xl; }
-  h6 { @apply text-base md:text-lg; }
+  h1 {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
+
+  h2 {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+
+  h4 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  h5 {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+
+  h6 {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    h1 {
+      font-size: 3rem;
+      line-height: 1;
+    }
+
+    h2 {
+      font-size: 2.25rem;
+      line-height: 2.5rem;
+    }
+
+    h3 {
+      font-size: 1.875rem;
+      line-height: 2.25rem;
+    }
+
+    h4 {
+      font-size: 1.5rem;
+      line-height: 2rem;
+    }
+
+    h5 {
+      font-size: 1.25rem;
+      line-height: 1.75rem;
+    }
+
+    h6 {
+      font-size: 1.125rem;
+      line-height: 1.75rem;
+    }
+  }
 }
 
 @layer components {

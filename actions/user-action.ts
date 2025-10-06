@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/prisma/db";
+import { Prisma } from "@prisma/client";
 import { getSession } from "./get-session";
 
 export const getCurrentUser = async () => {
@@ -21,5 +22,17 @@ export const getCurrentUser = async () => {
 };
 
 export const getUser = async (where: { id?: string; email?: string; name?: string }) => {
-  return prisma.user.findUnique({ where });
+  const uniqueWhere: Prisma.UserWhereUniqueInput | null = where.id
+    ? { id: where.id }
+    : where.email
+      ? { email: where.email }
+      : where.name
+        ? { name: where.name }
+        : null;
+
+  if (!uniqueWhere) {
+    return null;
+  }
+
+  return prisma.user.findUnique({ where: uniqueWhere });
 };

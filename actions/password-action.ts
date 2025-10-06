@@ -2,6 +2,7 @@
 
 import { encryptedVaultItemSchema, TEncryptedVaultItem } from "@/lib/validators/vault-encrypted-schema";
 import prisma from "@/prisma/db";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "./user-action";
 // crypto is now handled on the client; server stores ciphertext only
@@ -54,7 +55,18 @@ export const addNewPassword = async (values: TEncryptedVaultItem) => {
     throw new Error(validation.error.issues.at(0)?.message);
   }
 
-  const { category, email, url, websiteName, username, passwordCiphertext, passwordNonce, passwordSalt, notesCiphertext, notesNonce } = values;
+  const {
+    categoryId,
+    email,
+    url,
+    websiteName,
+    username,
+    passwordCiphertext,
+    passwordNonce,
+    passwordSalt,
+    notesCiphertext,
+    notesNonce,
+  } = values;
 
   try {
     // normalize strings consistently (lowercase and trim where useful)
@@ -62,21 +74,31 @@ export const addNewPassword = async (values: TEncryptedVaultItem) => {
     const emailNorm = email ? email.trim().toLowerCase() : undefined;
     const usernameNorm = username ? username.trim().toLowerCase() : undefined;
     const urlNorm = url ? url.trim().toLowerCase() : undefined;
-    await prisma.password.create({
-      data: {
-        password: "", // legacy field unused; keep for schema compatibility
-        passwordCiphertext,
-        passwordNonce,
-        passwordSalt,
-        notesCiphertext: notesCiphertext || undefined,
-        notesNonce: notesNonce || undefined,
-        websiteName: websiteNameNorm,
-        email: emailNorm,
-        username: usernameNorm,
-        categoryId: category,
-        userId: currentUser.id,
-        url: urlNorm,
+    const createData: Prisma.PasswordCreateInput = {
+      password: "", // legacy field unused; keep for schema compatibility
+      passwordCiphertext,
+      passwordNonce,
+      passwordSalt: passwordSalt ?? null,
+      notesCiphertext: notesCiphertext ?? null,
+      notesNonce: notesNonce ?? null,
+      websiteName: websiteNameNorm,
+      email: emailNorm ?? null,
+      username: usernameNorm ?? null,
+      user: {
+        connect: { id: currentUser.id },
       },
+      url: urlNorm ?? null,
+      category: undefined,
+    };
+
+    if (categoryId) {
+      createData.category = {
+        connect: { id: categoryId },
+      };
+    }
+
+    await prisma.password.create({
+      data: createData,
     });
 
     revalidatePath("/dashboard");
@@ -152,11 +174,15 @@ export const editPassword = async (param: {
         email: emailNorm,
         username: usernameNorm,
         url: urlNorm,
-        category: {
-          connect: {
-            id: values.category,
-          },
-        },
+        ...(values.categoryId
+          ? {
+              category: {
+                connect: {
+                  id: values.categoryId,
+                },
+              },
+            }
+          : {}),
       },
     });
 

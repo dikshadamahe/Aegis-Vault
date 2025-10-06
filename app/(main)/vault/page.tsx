@@ -20,6 +20,7 @@ type VaultItem = {
   passwordNonce: string;
   passwordEncryptedDek?: string | null;
   passwordDekNonce?: string | null;
+  passwordSalt?: string | null;
   notesCiphertext?: string | null;
   notesNonce?: string | null;
   notesEncryptedDek?: string | null;

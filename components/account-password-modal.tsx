@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Lock, Loader2 } from "lucide-react";
+import { Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { deriveKeyFromPassphrase } from "@/lib/crypto";
 
@@ -28,6 +28,7 @@ export default function AccountPasswordModal({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { data: session } = useSession();
 
   const effectiveDescription = useMemo(
@@ -137,18 +138,29 @@ export default function AccountPasswordModal({
 
           <div className="space-y-4">
             <div>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  setError("");
-                }}
-                placeholder="Account password"
-                className="input-glass w-full"
-                autoFocus
-                disabled={loading}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setError("");
+                  }}
+                  placeholder="Account password"
+                  className="input-glass w-full pr-12"
+                  autoFocus
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-3 flex items-center text-[var(--aegis-text-muted)] hover:text-[var(--aegis-accent-teal)] transition-colors disabled:opacity-60"
+                  disabled={loading}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
               {error && (
                 <motion.p
                   initial={{ opacity: 0, y: -10 }}

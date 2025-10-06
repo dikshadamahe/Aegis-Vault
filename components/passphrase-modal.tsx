@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Lock } from "lucide-react";
+import { Lock, Eye, EyeOff } from "lucide-react";
 
 type PassphraseModalProps = {
 	open: boolean;
@@ -15,6 +15,7 @@ export default function PassphraseModal({ open, reason, onSubmit, onCancel }: Pa
 	const [value, setValue] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [showPassphrase, setShowPassphrase] = useState(false);
 
 	useEffect(() => {
 		if (!open) {
@@ -78,18 +79,29 @@ export default function PassphraseModal({ open, reason, onSubmit, onCancel }: Pa
 						</div>
 
 						<div className="mt-6 space-y-3">
-							<input
-								type="password"
-								className="input-glass w-full"
-								placeholder="Passphrase"
-								value={value}
-								onChange={(event) => {
-									setValue(event.target.value);
-									setError(null);
-								}}
-								autoFocus
-								disabled={isSubmitting}
-							/>
+							<div className="relative">
+								<input
+									type={showPassphrase ? "text" : "password"}
+									className="input-glass w-full pr-12"
+									placeholder="Passphrase"
+									value={value}
+									onChange={(event) => {
+										setValue(event.target.value);
+										setError(null);
+									}}
+									autoFocus
+									disabled={isSubmitting}
+								/>
+								<button
+									type="button"
+									onClick={() => setShowPassphrase((prev) => !prev)}
+									className="absolute inset-y-0 right-3 flex items-center text-[var(--aegis-text-muted)] hover:text-[var(--aegis-accent-teal)] transition-colors disabled:opacity-60"
+									disabled={isSubmitting}
+									aria-label={showPassphrase ? "Hide passphrase" : "Show passphrase"}
+								>
+									{showPassphrase ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+								</button>
+							</div>
 							{error && <p className="text-sm text-red-400">{error}</p>}
 						</div>
 

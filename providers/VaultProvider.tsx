@@ -23,6 +23,12 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   const [encryptionKey, setEncryptionKey] = useState<Uint8Array | null>(null);
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development" && session) {
+      console.log("[CLIENT] Session object received:", session);
+    }
+  }, [session]);
+
   // Lock vault (clear key from memory)
   const lockVault = useCallback(() => {
     setEncryptionKey(null);
@@ -61,12 +67,17 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
         }
         
         // GUARD CLAUSE 2: Check encryptionSalt exists in session.user
-        const encryptionSalt = (session.user as any).encryptionSalt as string | undefined;
+        const encryptionSalt = ((session as any).encryptionSalt ?? (session.user as any)?.encryptionSalt) as
+          string | undefined;
         if (!encryptionSalt || encryptionSalt.trim() === "") {
-          const errorMsg = "Encryption salt missing from session. Please log out and log back in.";
+          const errorMsg = "Critical Error: Salt is missing. Please log out and log back in.";
           console.error("[VaultProvider] encryptionSalt not found in session.user:", session.user);
           toast.error(errorMsg);
           throw new Error(errorMsg);
+        }
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[DECRYPT] Using salt for key derivation:", (session as any).encryptionSalt ?? encryptionSalt);
         }
 
         // GUARD CLAUSE 3: Validate base64 format

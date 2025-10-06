@@ -27,6 +27,10 @@ export async function POST(req: Request) {
     const hashedPassword = await bcrypt.hash(password, salt);
     const encryptionSalt = randomBytes(16).toString("base64");
 
+    if (process.env.NODE_ENV === "development") {
+      console.log("[REGISTER] Generated salt for new user:", encryptionSalt);
+    }
+
     const created = await prisma.user.create({
       data: {
         email: emailLower,

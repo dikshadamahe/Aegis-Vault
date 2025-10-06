@@ -90,18 +90,29 @@ const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       // First time jwt callback is run, user object is available
       if (user) {
-        // @ts-expect-error augment
-        token.userId = (user as any).id;
-        // @ts-expect-error augment
-        token.encryptionSalt = (user as any).encryptionSalt ?? null;
+        (token as any).userId = (user as any).id;
+        (token as any).encryptionSalt = (user as any).encryptionSalt ?? null;
+        if (process.env.NODE_ENV === "development") {
+          console.log("[JWT CALLBACK] Attaching salt to token:", (user as any).encryptionSalt ?? null);
+        }
       }
       return token;
     },
     async session({ session, token }) {
+      const saltFromToken = (token as any).encryptionSalt;
+
+      if (saltFromToken == null || saltFromToken === "") {
+        throw new Error("Missing encryption salt in token; session creation aborted.");
+      }
+
       if (session.user) {
         // Attach user ID and encryption salt to session.user
         (session.user as any).id = (token as any).userId;
-        (session.user as any).encryptionSalt = (token as any).encryptionSalt ?? null;
+        (session.user as any).encryptionSalt = saltFromToken;
+      }
+      (session as any).encryptionSalt = saltFromToken;
+      if (process.env.NODE_ENV === "development") {
+        console.log("[SESSION CALLBACK] Attaching salt to session:", saltFromToken);
       }
       return session;
     },

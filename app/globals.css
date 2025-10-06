@@ -289,6 +289,18 @@
     min-height: 100px;
     resize: vertical;
   }
+
+  /* Hide native password reveal controls so custom toggle is the only one shown */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+
+  input[type="password"]::-webkit-textfield-decoration-container,
+  input[type="password"]::-webkit-credentials-auto-fill-button,
+  input[type="password"]::-webkit-clear-button {
+    display: none;
+  }
 }
 
 /* Custom Scrollbar */

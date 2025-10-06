@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Shield, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Shield, ArrowRight, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -11,6 +11,7 @@ export default function SignUpPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -129,16 +130,27 @@ export default function SignUpPage() {
             <label className="block text-sm font-medium mb-2 text-white">
               Password
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="input-glass"
-              required
-              minLength={8}
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="input-glass pr-12"
+                required
+                minLength={8}
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute inset-y-0 right-3 flex items-center text-[var(--aegis-text-muted)] hover:text-[var(--aegis-accent-teal)] transition-colors disabled:opacity-60"
+                disabled={loading}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
             <p className="text-xs text-[var(--aegis-text-muted)] mt-2">
               At least 8 characters
             </p>

@@ -64,6 +64,12 @@ Aegis Vault is a modern password manager built to keep sensitive credentials saf
 
 > Tip: If you switch package managers, delete the existing lockfile and regenerate it to avoid dependency drift.
 
+## Demo
+
+- username: `diksha`
+- email: `diksha@google.com`
+- password: `diksha123`
+
 ## License
 
 This project is shared for educational purposes. Please review and adapt before using it in production.

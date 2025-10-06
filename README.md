@@ -14,7 +14,8 @@ Aegis Vault is a modern password manager built to keep sensitive credentials saf
 - Client-side envelope encryption for passwords and notes, unlocked through an account-password modal
 - Dynamic favicons and category icons, plus responsive glassmorphic cards that expand on demand
 - Vault dashboard with search, category filters, infinite scroll, and refresh-on-mutation caching
-- Built-in password generator, secure copy-to-clipboard actions, and edit/delete confirmation flows
+- Built-in password generator that wipes results after 15 seconds, with secure copy-to-clipboard actions and edit/delete confirmation flows
+- View/hide toggles for passwords and passphrases across authentication, add/edit, and encryption dialogs
 - Category management and demo seeding utilities for quick onboarding and testing
 - Theme switcher with motion-enhanced modals and dark-first experience
 

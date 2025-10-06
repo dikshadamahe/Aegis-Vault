@@ -10,13 +10,13 @@ Aegis Vault is a modern password manager built to keep sensitive credentials saf
 
 ## Features
 
-- Secure auth flow with NextAuth, session hardening, and rate-limited API endpoints
-- Client-side envelope encryption for passwords and notes using libsodium
-- Dynamic logos and favicons for saved sites, plus category icons for quick scanning
-- Rich dashboard with search, filtering, infinite scroll, and responsive cards
-- Password generator, strength analysis, and inline copy/share helpers
-- Category management, bulk seeding utilities, and edit/delete confirmations
-- Theming support with glassmorphic UI, motion-enhanced modals, and dark mode defaults
+- Secure email/password auth via NextAuth with session hardening and rate-limited API routes
+- Client-side envelope encryption for passwords and notes, unlocked through an account-password modal
+- Dynamic favicons and category icons, plus responsive glassmorphic cards that expand on demand
+- Vault dashboard with search, category filters, infinite scroll, and refresh-on-mutation caching
+- Built-in password generator, secure copy-to-clipboard actions, and edit/delete confirmation flows
+- Category management and demo seeding utilities for quick onboarding and testing
+- Theme switcher with motion-enhanced modals and dark-first experience
 
 ## Tech Stack
 
@@ -32,10 +32,10 @@ Aegis Vault is a modern password manager built to keep sensitive credentials saf
 
 1. **Clone the repository**
 	```bash
-	git clone https://github.com/dikshadamahe/password-authenticator.git aegis-vault
+	git clone https://github.com/dikshadamahe/Aegis-Vault.git aegis-vault
 	cd aegis-vault
 	```
-2. **Install dependencies**
+2. **Install dependencies** (project uses pnpm by default)
 	```bash
 	npm install
 	# or use pnpm install / yarn install if you prefer, but keep lockfiles consistent
@@ -63,10 +63,6 @@ Aegis Vault is a modern password manager built to keep sensitive credentials saf
 6. Visit `http://localhost:3000` in your browser. Sign up or seed data via the included API utilities to explore the dashboard.
 
 > Tip: If you switch package managers, delete the existing lockfile and regenerate it to avoid dependency drift.
-
-## Crypto Note
-
-For client-side encryption, this project uses libsodium-wrappers. A Master Encryption Key is derived from the user's password and a unique salt using crypto_pwhash (Argon2id). This key is then used for a robust envelope encryption scheme with crypto_secretbox (XChaCha20-Poly1305) to secure each password item individually.
 
 ## License
 

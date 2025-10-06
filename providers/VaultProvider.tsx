@@ -53,19 +53,32 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   const unlockVault = useCallback(
     async (passphrase: string) => {
       try {
+        // GUARD CLAUSE 1: Check session exists
         if (!session?.user) {
-          throw new Error("No session found");
+          const errorMsg = "No active session. Please log in again.";
+          toast.error(errorMsg);
+          throw new Error(errorMsg);
         }
         
+        // GUARD CLAUSE 2: Check encryptionSalt exists in session.user
         const encryptionSalt = (session.user as any).encryptionSalt as string | undefined;
-        if (!encryptionSalt) {
-          throw new Error("No encryption salt found in session");
+        if (!encryptionSalt || encryptionSalt.trim() === "") {
+          const errorMsg = "Encryption salt missing from session. Please log out and log back in.";
+          console.error("[VaultProvider] encryptionSalt not found in session.user:", session.user);
+          toast.error(errorMsg);
+          throw new Error(errorMsg);
         }
 
-        // Convert base64 salt to Uint8Array
-        const saltBytes = Uint8Array.from(atob(encryptionSalt), (c) =>
-          c.charCodeAt(0)
-        );
+        // GUARD CLAUSE 3: Validate base64 format
+        let saltBytes: Uint8Array;
+        try {
+          saltBytes = Uint8Array.from(atob(encryptionSalt), (c) => c.charCodeAt(0));
+        } catch (decodeError) {
+          const errorMsg = "Invalid encryption salt format. Please contact support.";
+          console.error("[VaultProvider] Failed to decode encryptionSalt:", decodeError);
+          toast.error(errorMsg);
+          throw new Error(errorMsg);
+        }
 
         // Derive key from passphrase
         const { key } = await deriveKeyFromPassphrase(passphrase, saltBytes);
@@ -79,7 +92,10 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
 
         toast.success("Vault unlocked successfully");
       } catch (error: any) {
-        toast.error("Failed to unlock vault - incorrect passphrase");
+        // Only show generic error if we haven't already shown a specific one
+        if (!error.message?.includes("salt") && !error.message?.includes("session")) {
+          toast.error("Failed to unlock vault - incorrect passphrase");
+        }
         throw error;
       }
     },

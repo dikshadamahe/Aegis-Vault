@@ -53,6 +53,13 @@ const authOptions: NextAuthOptions = {
               },
             ],
           },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            hashedPassword: true,
+            encryptionSalt: true, // CRITICAL: Explicitly fetch salt
+          },
         });
 
         if (!user || !user.hashedPassword)
@@ -65,6 +72,12 @@ const authOptions: NextAuthOptions = {
 
         if (!passwordMatches)
           throw new Error("Invalid credentials: Incorrect password.");
+
+        // CRITICAL: Validate encryptionSalt exists (should never be null for new users)
+        if (!user.encryptionSalt) {
+          console.error(`[AUTH] User ${user.id} missing encryptionSalt - database corruption?`);
+          throw new Error("Account setup incomplete. Please contact support.");
+        }
 
         return user;
       },
@@ -86,10 +99,9 @@ const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        // @ts-expect-error augment
-        session.user.id = (token as any).userId;
-        // @ts-expect-error augment
-        (session as any).encryptionSalt = (token as any).encryptionSalt ?? null;
+        // Attach user ID and encryption salt to session.user
+        (session.user as any).id = (token as any).userId;
+        (session.user as any).encryptionSalt = (token as any).encryptionSalt ?? null;
       }
       return session;
     },

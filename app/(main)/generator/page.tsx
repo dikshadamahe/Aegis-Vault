@@ -3,7 +3,7 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
 import { RefreshCw, Copy, Check } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export default function GeneratorPage() {
@@ -15,6 +15,27 @@ export default function GeneratorPage() {
   const [specialCharacters, setSpecialCharacters] = useState(true);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const clearPasswordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (clearPasswordTimerRef.current) {
+        clearTimeout(clearPasswordTimerRef.current);
+        clearPasswordTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const schedulePasswordClear = () => {
+    if (clearPasswordTimerRef.current) {
+      clearTimeout(clearPasswordTimerRef.current);
+    }
+    clearPasswordTimerRef.current = setTimeout(() => {
+      setPassword("");
+      setCopied(false);
+      clearPasswordTimerRef.current = null;
+    }, 15_000);
+  };
 
   const generatePassword = async () => {
     setLoading(true);
@@ -35,6 +56,7 @@ export default function GeneratorPage() {
       const data = await res.json();
       setPassword(data.password);
       setCopied(false);
+      schedulePasswordClear();
     } catch (error) {
       toast.error("Failed to generate password");
     } finally {

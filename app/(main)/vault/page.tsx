@@ -122,16 +122,6 @@ export default function VaultPage() {
           
           <div className="flex items-center gap-3">
             <motion.button
-              onClick={() => setIsCategoriesModalOpen(true)}
-              className="h-12 px-5 rounded-lg flex items-center gap-2 bg-[var(--aegis-bg-card)] hover:bg-[var(--aegis-bg-elevated)] text-[var(--aegis-text-body)] hover:text-[var(--aegis-text-heading)] transition-all duration-300 border border-[var(--aegis-border)] hover:border-[var(--aegis-border-hover)]"
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Folder className="w-4 h-4" strokeWidth={2} />
-              <span className="text-sm font-medium">Categories</span>
-            </motion.button>
-            
-            <motion.button
               onClick={() => setIsAddModalOpen(true)}
               className="h-12 px-6 rounded-lg flex items-center gap-2 font-medium transition-all duration-300"
               style={{

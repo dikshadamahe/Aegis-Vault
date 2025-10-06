@@ -1,6 +1,6 @@
 "use client";
 
-import { AegisLayout } from "@/components/aegis-layout";
+import { DashboardLayout } from "@/components/DashboardLayout";
 import { motion } from "framer-motion";
 import { RefreshCw, Copy, Check } from "lucide-react";
 import { useState } from "react";
@@ -51,7 +51,7 @@ export default function GeneratorPage() {
   };
 
   return (
-    <AegisLayout>
+    <DashboardLayout>
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -160,6 +160,6 @@ export default function GeneratorPage() {
           </motion.button>
         </motion.div>
       </div>
-    </AegisLayout>
+    </DashboardLayout>
   );
 }

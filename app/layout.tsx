@@ -7,6 +7,7 @@ import ThemeProvider from "@/providers/theme-provider";
 import { cn } from "@/lib/utils";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Providers from "@/components/providers";
+import { VaultProvider } from "@/providers/VaultProvider";
 
 export const metadata: Metadata = {
   title: "Aegis Vault — Secure Password Manager",
@@ -29,7 +30,9 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <ReactQueryProvider>
-              {children}
+              <VaultProvider>
+                {children}
+              </VaultProvider>
               <SpeedInsights />
               <Toaster position="bottom-right" richColors theme="dark" expand />
             </ReactQueryProvider>

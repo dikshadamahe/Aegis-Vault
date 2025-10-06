@@ -1,12 +1,10 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Prisma Client generator
 generator client {
   provider = "prisma-client-js"
 }
 
-// Switch to MongoDB provider as requested
 datasource db {
   provider = "mongodb"
   url      = env("MONGODB_URI")
@@ -14,8 +12,8 @@ datasource db {
 
 // NextAuth + Application models adapted for MongoDB
 model Account {
-  id                String @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String @db.ObjectId
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
   type              String
   provider          String
   providerAccountId String
@@ -41,19 +39,18 @@ model Session {
 }
 
 model User {
-  id                 String     @id @default(auto()) @map("_id") @db.ObjectId
-  name               String?    @unique
-  email              String?    @unique
-  emailVerified      DateTime?
-  hashedPassword     String?
-  // Per-user salt for deriving encryption keys; base64 string
-  encryptionSalt     String?
-  image              String?
-  encryptionPublicKey String? // reserved for future sharing features
-  accounts           Account[]
-  sessions           Session[]
-  categories         Category[]
-  passwords          Password[]
+  id                  String     @id @default(auto()) @map("_id") @db.ObjectId
+  name                String?    @unique
+  email               String?    @unique
+  emailVerified       DateTime?
+  hashedPassword      String?
+  encryptionSalt      String?
+  image               String?
+  encryptionPublicKey String?
+  accounts            Account[]
+  sessions            Session[]
+  categories          Category[]
+  passwords           Password[]
 
   @@index([name, email])
 }
@@ -68,14 +65,13 @@ model VerificationToken {
 }
 
 model Category {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String     @db.ObjectId
   name      String
   slug      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   passwords Password[]
 
   @@unique([userId, slug])
@@ -84,33 +80,33 @@ model Category {
 }
 
 model Password {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String   @db.ObjectId
-  categoryId  String   @db.ObjectId
-  // legacy display fields
-  websiteName String
-  email       String?
-  username    String?
-  url         String?
-  // legacy plaintext-encrypted field (will be deprecated in favor of ciphertext fields)
-  password    String
-  // client-side encryption fields (ciphertext only)
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String    @db.ObjectId
+  categoryId         String    @db.ObjectId
+
+  // Display fields
+  websiteName        String
+  email              String?
+  username           String?
+  url                String?
+
+  // Client-side encryption fields
   passwordCiphertext String?
   passwordNonce      String?
-  passwordSalt       String?
   notesCiphertext    String?
   notesNonce         String?
-  // Envelope Encryption fields (DEK encrypted with MEK)
-  passwordEncryptedDek String?  // DEK encrypted with user's MEK (optional for backward compatibility)
-  passwordDekNonce     String?  // Nonce for DEK encryption
-  notesEncryptedDek    String?  // DEK encrypted with user's MEK for notes
-  notesDekNonce        String?  // Nonce for notes DEK encryption
-  lastUsedAt         DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  encryptedDek       String?   // The encrypted Data Encryption Key (DEK)
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id])
+  lastUsedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category           Category  @relation(fields: [categoryId], references: [id])
+
+  // Deprecated fields to be removed later
+  password           String?   @default("")
+  passwordSalt       String?
 
   @@index([userId])
   @@index([categoryId])

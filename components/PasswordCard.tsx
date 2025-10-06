@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Copy, ExternalLink, Lock } from "lucide-react";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Favicon, extractDomain } from "./ui/Favicon";
+import { Favicon } from "./ui/Favicon";
 import PassphraseModal from "./passphrase-modal";
 import { decryptWithEnvelope, decryptSecret, deriveKeyFromPassphrase } from "@/lib/crypto";
 import { toast } from "sonner";
 import type { Session } from "next-auth";
+import { categoryIcon } from "@/constants/category-icon";
 
 type PasswordCardProps = {
   item: {
@@ -24,6 +25,11 @@ type PasswordCardProps = {
     notesNonce?: string | null;
     notesEncryptedDek?: string | null;
     notesDekNonce?: string | null;
+    category?: {
+      id: string;
+      name: string;
+      slug: string;
+    } | null;
   };
 };
 
@@ -38,9 +44,9 @@ export function PasswordCard({ item }: PasswordCardProps) {
 
   const { data: session } = useSession();
 
-  // Extract domain for favicon using the helper function
-  const sanitizedUrl = item.url ? (item.url.startsWith("http") ? item.url : `https://${item.url}`) : undefined;
-  const computedDomain = extractDomain(sanitizedUrl ?? item.websiteName);
+  const normalizedUrl = normalizeUrl(item.url);
+  const categorySlug = item.category?.slug;
+  const CategoryGlyph = categorySlug ? categoryIcon[categorySlug] : undefined;
   const hasEncryptedNotes = Boolean(
     item.notesCiphertext && (item.notesNonce || (item.notesEncryptedDek && item.notesDekNonce))
   );
@@ -176,7 +182,16 @@ export function PasswordCard({ item }: PasswordCardProps) {
             whileHover={{ scale: 1.1, rotate: 5 }}
             transition={{ type: "spring", stiffness: 400, damping: 10 }}
           >
-            <Favicon domain={computedDomain ?? sanitizedUrl ?? item.websiteName} size={96} className="w-12 h-12" />
+            {CategoryGlyph ? (
+              <span
+                className="flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--aegis-border)] bg-[var(--aegis-bg-card)] text-[var(--aegis-accent-primary)]"
+                aria-hidden
+              >
+                <CategoryGlyph className="h-6 w-6" strokeWidth={2.25} />
+              </span>
+            ) : (
+              <Favicon domain={normalizedUrl?.hostname ?? item.websiteName} size={96} className="w-12 h-12" />
+            )}
           </motion.div>
 
           {/* Website Info */}
@@ -286,9 +301,9 @@ export function PasswordCard({ item }: PasswordCardProps) {
                         readOnly
                         className="input-glass flex-1 text-sm"
                       />
-                      {sanitizedUrl && (
+                      {normalizedUrl?.href && (
                         <motion.a
-                          href={sanitizedUrl}
+                          href={normalizedUrl.href}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="h-11 px-4 rounded-lg bg-[var(--aegis-bg-elevated)] hover:bg-[var(--aegis-accent-primary)] hover:text-[var(--aegis-bg-deep)] transition-all duration-300 flex items-center"
@@ -393,6 +408,19 @@ function getSessionSalt(session: Session | null): string | undefined {
   const root = (session as unknown as { encryptionSalt?: string }).encryptionSalt;
   const nested = (session.user as { encryptionSalt?: string } | undefined)?.encryptionSalt;
   return root ?? nested ?? undefined;
+}
+
+function normalizeUrl(rawUrl: string | null | undefined): { href: string; hostname: string } | undefined {
+  if (!rawUrl) return undefined;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return undefined;
+  try {
+    const url = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
+    return { href: url.href, hostname: url.hostname.replace(/^www\./, "") };
+  } catch (error) {
+    console.warn("Failed to normalize URL", rawUrl, error);
+    return undefined;
+  }
 }
 
 function base64ToUint8(value: string): Uint8Array {

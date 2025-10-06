@@ -32,18 +32,10 @@ export function Favicon({ domain, size = 64, className = "" }: FaviconProps) {
         src={faviconUrl}
         alt={`${hostname} favicon`}
         className="absolute inset-0 h-full w-full object-cover"
-        onError={(e) => {
-          const target = e.currentTarget;
-          target.style.display = "none";
-          const fallback = target.nextElementSibling as HTMLElement | null;
-          if (fallback) fallback.style.display = "flex";
-        }}
+        onError={(event) => handleImageError(event.currentTarget)}
         loading="lazy"
       />
-      <div
-        style={{ display: "none" }}
-        className="absolute inset-0 flex items-center justify-center"
-      >
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity" data-fallback>
         <Globe className="w-4 h-4 text-white/40" />
       </div>
     </div>
@@ -61,5 +53,13 @@ export function extractDomain(url: string | null | undefined): string | null {
     return hostname.replace(/^www\./, "");
   } catch {
     return null;
+  }
+}
+
+function handleImageError(img: HTMLImageElement) {
+  img.style.display = "none";
+  const fallback = img.parentElement?.querySelector<HTMLElement>("[data-fallback]");
+  if (fallback) {
+    fallback.style.opacity = "1";
   }
 }

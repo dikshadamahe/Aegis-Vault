@@ -2,7 +2,7 @@
 
 ## Live Demo
 
-Coming soon — the deployment URL will be added after launch.
+Watch the product walk-through on Google Drive: https://drive.google.com/file/d/1zzN-rsPRuaSYOBKjab9VLvu33b_dk8Px/view?usp=sharing
 
 ## Description
 
@@ -39,7 +39,6 @@ Aegis Vault is a modern password manager built to keep sensitive credentials saf
 2. **Install dependencies** (project uses pnpm by default)
 	```bash
 	npm install
-	# or use pnpm install / yarn install if you prefer, but keep lockfiles consistent
 	```
 3. **Create `.env.local`** at the project root and populate the required values:
 	```env

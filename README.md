@@ -36,10 +36,9 @@ Aegis Vault is a modern password manager built to keep sensitive credentials saf
 	git clone https://github.com/dikshadamahe/Aegis-Vault.git aegis-vault
 	cd aegis-vault
 	```
-2. **Install dependencies** (project uses pnpm by default)
+2. **Install dependencies**
 	```bash
-	pnpm install
-	# if you prefer npm or yarn, delete pnpm-lock.yaml first to avoid lockfile conflicts
+	npm install
 	```
 3. **Create `.env.local`** at the project root and populate the required values:
 	```env
@@ -53,13 +52,13 @@ Aegis Vault is a modern password manager built to keep sensitive credentials saf
 	- Generate `NEXTAUTH_SECRET` with `openssl rand -base64 32` or a similar command.
 4. **Generate the Prisma client**
 	```bash
-	pnpm prisma generate
+	npm run prisma:generate
 	# optional: sync schema metadata (MongoDB)
-	pnpm prisma db push
+	npm run prisma:sync
 	```
 5. **Start the development server**
 	```bash
-	pnpm run dev
+	npm run dev
 	```
 6. Visit `http://localhost:3000` in your browser. Sign up or seed data via the included API utilities to explore the dashboard.
 

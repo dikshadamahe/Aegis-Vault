@@ -2,7 +2,8 @@
 
 ## Live Demo
 
-Watch the product walk-through on Google Drive: https://drive.google.com/file/d/1zzN-rsPRuaSYOBKjab9VLvu33b_dk8Px/view?usp=sharing
+- Production: https://aegis-vault.vercel.app
+- Walk-through video: https://drive.google.com/file/d/1zzN-rsPRuaSYOBKjab9VLvu33b_dk8Px/view?usp=sharing
 
 ## Description
 

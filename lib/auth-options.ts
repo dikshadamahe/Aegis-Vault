@@ -119,10 +119,10 @@ const authOptions: NextAuthOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // enforce dashboard after sign-in when coming from our app
-      if (url.startsWith(baseUrl)) return `${baseUrl}/dashboard`;
-      if (url.startsWith("/")) return `${baseUrl}/dashboard`;
-      return `${baseUrl}/dashboard`;
+      // Always land users in the vault after auth flows
+      if (url.startsWith(baseUrl)) return `${baseUrl}/vault`;
+      if (url.startsWith("/")) return `${baseUrl}/vault`;
+      return `${baseUrl}/vault`;
     },
   },
   session: {
